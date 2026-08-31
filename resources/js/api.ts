@@ -22,7 +22,10 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, aut
       clearSession()
       throw new Error('UNAUTHENTICATED')
     }
-    throw new Error(payload?.message || 'Permintaan gagal.')
+    const validationMessage = payload?.errors
+      ? Object.values(payload.errors as Record<string, string[]>).flat().join(' ')
+      : ''
+    throw new Error(validationMessage || payload?.message || `Permintaan gagal (${response.status}).`)
   }
   return payload as T
 }
