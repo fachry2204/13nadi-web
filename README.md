@@ -12,6 +12,8 @@ D:\xampp\php\php.exe artisan migrate
 D:\xampp\php\php.exe artisan serve --port=8002
 ```
 
+Template `.env.example` menggunakan MySQL untuk deployment Plesk. Ganti `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` dengan kredensial database dari Plesk. Untuk pengembangan lokal berbasis SQLite, ubah `DB_CONNECTION=sqlite` pada file `.env` lokal.
+
 Buka `http://127.0.0.1:8002`. Portal admin berada di `/nadiku/login`; autentikasi menggunakan username dan sesi Sanctum. Untuk pengembangan aset secara langsung, jalankan `npm run dev` pada terminal kedua.
 
 ## Pemeriksaan
