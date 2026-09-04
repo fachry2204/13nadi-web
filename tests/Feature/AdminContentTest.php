@@ -53,4 +53,34 @@ class AdminContentTest extends TestCase
 
         File::delete(public_path(ltrim($url, '/')));
     }
+
+    public function test_admin_can_manage_a_linkable_home_banner(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson('/api/v1/admin/banner', [
+            'title' => 'Banner Promo',
+            'slug' => 'banner-promo',
+            'image_url' => '/uploads/banner-promo.webp',
+            'external_url' => 'https://example.com/promo',
+            'metadata' => ['link_enabled' => true],
+            'sort_order' => 0,
+            'is_active' => true,
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('content_items', [
+            'id' => $response->json('data.id'),
+            'type' => 'banner',
+            'image_url' => '/uploads/banner-promo.webp',
+            'external_url' => 'https://example.com/promo',
+            'is_active' => true,
+        ]);
+
+        $this->getJson('/api/v1/public/banners')
+            ->assertOk()
+            ->assertJsonFragment([
+                'slug' => 'banner-promo',
+                'link_enabled' => true,
+            ]);
+    }
 }

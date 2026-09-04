@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 class AdminContentController extends Controller {
- private array $types=['slider','program','about','release','artist','news','photo','video','info'];
+ private array $types=['slider','program','banner','about','release','artist','news','photo','video','info'];
  public function settings(){return response()->json(['data'=>Setting::orderBy('group')->orderBy('key')->get()]);}
  public function updateSettings(Request $r){$d=$r->validate(['items'=>['required','array'],'items.*'=>['nullable','string','max:2048']]);foreach($d['items'] as $key=>$value)Setting::updateOrCreate(['key'=>$key],['group'=>'identity','value'=>$value]);ActivityLog::create(['user_id'=>$r->user()->id,'action'=>'settings_updated','ip_address'=>$r->ip()]);return $this->settings();}
  public function activity(){return response()->json(ActivityLog::latest()->paginate(50));}

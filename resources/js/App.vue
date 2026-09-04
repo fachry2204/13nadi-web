@@ -1,204 +1,3341 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { Activity, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Disc3, ExternalLink, Eye, Film, GripVertical, Handshake, Image, ImageUp, LayoutDashboard, LogOut, Menu, Music2, Pencil, Plus, Search, Settings, Trash2, Users, X } from '@lucide/vue'
-import slide1Image from './assets/slide1.jpg'
-import slide2Image from './assets/slide2.jpg'
-import { apiRequest, loginAdmin, logoutAdmin, uploadAdminImage } from './api'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
+import {
+    Activity,
+    ArrowRight,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    Disc3,
+    ExternalLink,
+    Eye,
+    Film,
+    GripVertical,
+    Handshake,
+    Image,
+    ImageUp,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    Music2,
+    Pencil,
+    Plus,
+    Search,
+    Settings,
+    Trash2,
+    Users,
+    X,
+} from "@lucide/vue";
+import slide1Image from "./assets/slide1.jpg";
+import slide2Image from "./assets/slide2.jpg";
+import { apiRequest, loginAdmin, logoutAdmin, uploadAdminImage } from "./api";
 
-const route=useRoute(),router=useRouter(),menuOpen=ref(false),sideOpen=ref(false),query=ref(''),toast=ref(''),selectedVideo=ref<number|null>(null)
-const username=ref(''),password=ref(''),authError=ref(''),authLoading=ref(false),adminLoading=ref(false)
-const sliderSaving=ref(false),sliderError=ref('')
-const sliderForm=ref({title:'',subtitle:'',description:'',image_url:'',external_url:'',sort_order:0,is_active:true})
-const contentSaving=ref(false),contentError=ref('')
-const imageUploading=ref<'slider'|'content'|''>(''),imageUploadError=ref('')
-const publicLoading=ref(true)
-const releaseGenres=['Pop','Indie Pop','Rock','Alternative Rock','Jazz','R&B','Soul','Hip Hop','Electronic','Folk','Dangdut','Keroncong','Reggae','Metal','Punk','Classical','World Music','Lainnya']
-const contentForm=ref({title:'',slug:'',subtitle:'',description:'',image_url:'',external_url:'',sort_order:0,is_active:true,metadata:{secondary_text:'',year:'',genre:'',music_genre:'',youtube_url:'',date:'',duration:''} as Record<string,string>})
-const aboutTitle=ref('13 Nadi Musik')
-const aboutImage=ref('')
-const aboutParagraphOne=ref('Berawal dari label musik digital, di tahun 2019, 13NadiMusik kini berevolusi menjadi “Digital content creator partner”, banyaknya para content creator, yang memiliki potensi untuk bisa menghadirkan konten konten berkualitas, namun terkendala oleh hal-hal teknis, mendasari pemikiran 13NadiMusik untuk hadir memberikan solusinya.')
-const aboutParagraphTwo=ref('Ide orisinil dipadu dengan bakat kuat, kadang tidak cukup, urusan teknis, seperti algoritma platform, kualitas audio visual, digital marketing dan hal teknis lainnya, membuat para content creator, jadi kurang fokus dengan esensi kreatif dan visi misi konten. Kami hadir sebagai partner para konten kreator, agar para content creator bisa lebih fokus berkarya, mewujudkan ide-ide kreatif, untuk menghibur, mengedukasi, atau membagikan pengalaman yang inspiratif untuk viewers nya.')
-const infoHeading=ref({id:0,title:'Dari ide pertama hingga didengar dunia.',label:'EKOSISTEM KREATIF',description:'Kami membangun perjalanan karya yang terarah, autentik, dan dekat dengan pendengar.',slug:'ecosystem-heading',metadata:{kind:'heading'}})
-const infoServices=ref([
- {id:0,title:'Artist Development',button:'Kenali Artis',description:'Pengembangan identitas, arah musikal, dan strategi karya untuk setiap fase perjalanan artis.',slug:'artist-development',metadata:{kind:'service',link:'#artis',icon:'disc'}},
- {id:0,title:'Music Production',button:'Lihat Rilisan',description:'Pendampingan kreatif dari penulisan, rekaman, hingga karya siap hadir dengan karakter terbaiknya.',slug:'music-production',metadata:{kind:'service',link:'#rilisan',icon:'music'}},
- {id:0,title:'Digital Distribution',button:'Berkolaborasi',description:'Distribusi dan kampanye digital yang membantu musik menjangkau komunitas pendengar yang tepat.',slug:'digital-distribution',metadata:{kind:'service',link:'#kolaborasi',icon:'activity'}},
-])
-const infoSaving=ref(false),infoError=ref('')
-const heroSlides=reactive([
- {title:['The Dusty Rusty'],text:"The Dusty Rusty is a band originating from Bogor, West Java, Indonesia. Its members, initially friends from junior high school, reunited in their 20s to form the band, using it as a platform for self-expression and creativity. The name 'The Dusty Rusty', meaning 'dust and rust', was chosen because philosophically, it symbolizes something redolent of the 'past'.",button:'Dengarkan Sekarang',link:'#rilisan',label:'Featured Story',track:'Pulang Perlahan — Arunika Senja',image:slide1Image,imageClass:'hero-photo-one'},
- {title:['Temukan Suara','Yang Baru','Hari Ini'],text:'Dengarkan rilisan terbaru dari musisi independen dengan karakter, cerita, dan warna yang berbeda.',button:'Lihat Rilisan Baru',link:'#rilisan',label:'New Release',track:'Kota Hujan — Ruang Tengah',image:slide2Image,imageClass:'hero-photo-two'}])
-const programSlides=reactive([
- {id:0,slug:'musik-independen',title:'Musik Independen',text:'Ruang untuk karya yang jujur, berkarakter, dan tumbuh bersama pendengarnya.',icon:Disc3,link:'#rilisan',iconKey:'disc'},
- {id:0,slug:'live-session',title:'Live Session',text:'Penampilan intim yang menangkap energi musisi dalam format panggung yang autentik.',icon:Activity,link:'#galeri',iconKey:'activity'},
- {id:0,slug:'artist-spotlight',title:'Artist Spotlight',text:'Mengenal lebih dekat cerita, proses kreatif, dan perjalanan para artis 13 Nadi.',icon:Users,link:'#berita',iconKey:'users'},
- {id:0,slug:'creative-collaboration',title:'Creative Collaboration',text:'Kolaborasi lintas disiplin untuk melahirkan pengalaman musik yang lebih bermakna.',icon:Handshake,link:'#kolaborasi',iconKey:'handshake'}])
-const programSaving=ref(false),programError=ref('')
-const activeSlide=ref(0),slidePaused=ref(false),scrollProgress=ref(0)
-const activeProgram=ref(0),programPaused=ref(false)
-let slideTimer:number|undefined,programTimer:number|undefined,revealObserver:IntersectionObserver|undefined
-const goSlide=(index:number)=>{activeSlide.value=(index+heroSlides.length)%heroSlides.length}
-const nextSlide=()=>goSlide(activeSlide.value+1)
-const startSlider=()=>{slideTimer=window.setInterval(()=>{if(!slidePaused.value)nextSlide()},6500)}
-const goProgram=(index:number)=>{activeProgram.value=(index+programSlides.length)%programSlides.length}
-const startProgramSlider=()=>{programTimer=window.setInterval(()=>{if(!programPaused.value)goProgram(activeProgram.value+1)},4800)}
-const updateScrollProgress=()=>{const max=document.documentElement.scrollHeight-innerHeight;scrollProgress.value=max>0?(scrollY/max)*100:0}
-onMounted(()=>{startSlider();startProgramSlider();window.addEventListener('scroll',updateScrollProgress,{passive:true});updateScrollProgress();if(route.name==='admin')loadAdminRows();else if(['slider-create','slider-edit'].includes(String(route.name)))loadSliderForm();else if(['content-create','content-edit'].includes(String(route.name)))loadContentForm();else if(route.name!=='login')loadAllPublicContent();requestAnimationFrame(()=>{const items=document.querySelectorAll('.reveal-item');revealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');revealObserver?.unobserve(entry.target)}}),{threshold:.14,rootMargin:'0px 0px -55px'});items.forEach(item=>revealObserver?.observe(item))})})
-onUnmounted(()=>{if(slideTimer)window.clearInterval(slideTimer);if(programTimer)window.clearInterval(programTimer);window.removeEventListener('scroll',updateScrollProgress);revealObserver?.disconnect()})
-type ReleaseItem={slug:string,title:string,artist:string,year:string,genre:string,image:string,externalUrl?:string}
-const releases=reactive<ReleaseItem[]>([
- {slug:'jarak-kita',title:'Jarak Kita',artist:'Aurelia',year:'2024',genre:'Single',image:'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85'},
- {slug:'kota-hujan',title:'Kota Hujan',artist:'Ruang Tengah',year:'2024',genre:'Single',image:'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=85'},
- {slug:'berjalan-lagi',title:'Berjalan Lagi',artist:'Langit Senja',year:'2024',genre:'EP',image:'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=85'},
- {slug:'samudra',title:'Samudra',artist:'Mata Air',year:'2024',genre:'Single',image:'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=85'}])
-const artists=reactive([
- {slug:'aurelia',name:'Aurelia',role:'Solo Artist',image:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=85'},
- {slug:'ruang-tengah',name:'Ruang Tengah',role:'Band',image:'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=800&q=85'},
- {slug:'langit-senja',name:'Langit Senja',role:'Band',image:'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=85'},
- {slug:'mata-air',name:'Mata Air',role:'Band',image:'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=800&q=85'}])
-const news=reactive([
- {slug:'live-session-jakarta',category:'Live Session',date:'22 Agustus 2026',title:'13 Nadi Live Session Membawa Suara Baru ke Jakarta',excerpt:'Pertunjukan intim yang mempertemukan musisi, cerita, dan pendengar dalam satu panggung.',image:'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1000&q=88'},
- {slug:'proses-kreatif-studio',category:'Behind The Sound',date:'18 Agustus 2026',title:'Di Balik Studio: Merancang Karakter Sebuah Lagu',excerpt:'Menjelajahi proses kreatif dari gagasan pertama hingga aransemen menemukan bentuk terbaiknya.',image:'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1000&q=88'},
- {slug:'artist-spotlight-aurelia',category:'Artist Spotlight',date:'12 Agustus 2026',title:'Aurelia dan Keberanian Bercerita Lewat Musik',excerpt:'Perjalanan personal tentang keberanian, kejujuran, dan suara yang tumbuh bersama pendengar.',image:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=88'},
- {slug:'kolaborasi-lintas-suara',category:'Kolaborasi',date:'8 Agustus 2026',title:'Ketika Musik, Visual, dan Panggung Menjadi Satu',excerpt:'Kolaborasi lintas disiplin menghadirkan pengalaman pertunjukan yang lebih hidup dan bermakna.',image:'https://images.unsplash.com/photo-1521337581100-8ca9a73a5f79?auto=format&fit=crop&w=1000&q=88'}])
-const gallery=reactive(['https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=85','https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=900&q=85','https://images.unsplash.com/photo-1521337581100-8ca9a73a5f79?auto=format&fit=crop&w=900&q=85','https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=900&q=85','https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85'])
-const videoGallery=reactive([
- {title:'Live Session — Suara dari Panggung',duration:'04:28',image:'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1000&q=88'},
- {title:'Behind The Sound — Studio Stories',duration:'06:12',image:'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1000&q=88'},
- {title:'Artist Spotlight — Cerita di Balik Nada',duration:'03:46',image:'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=88'}])
-const modules=[['Dashboard','',LayoutDashboard],['Slider Hero','slider',Image],['Slide Program','program',Activity],['Tentang','tentang',Disc3],['Informasi Lain','informasi',Activity],['Rilisan','rilisan',Music2],['Artis','artis',Users],['Berita','berita',Activity],['Galeri Foto','foto',Image],['Galeri Video','video',Film],['Pengaturan','settings',Settings],['Activity Log','activity',Activity]] as const
-const rows=ref<any[]>([])
-const filtered=computed(()=>rows.value.filter(r=>r.name.toLowerCase().includes(query.value.toLowerCase())))
-const currentRelease=computed(()=>releases.find(x=>x.slug===route.params.slug))
-const releaseDetails=reactive<Record<string,any>>({})
-const currentReleaseDescription=computed(()=>releaseDetails[String(route.params.slug)]?.description||'')
-const currentReleaseMusicGenre=computed(()=>releaseDetails[String(route.params.slug)]?.metadata?.music_genre||'')
-const currentReleaseYoutubeUrl=computed(()=>releaseDetails[String(route.params.slug)]?.metadata?.youtube_url||'')
-const youtubeEmbedUrl=computed(()=>{
- const value=currentReleaseYoutubeUrl.value.trim()
- if(!value)return ''
- try{
-  const url=new URL(value)
-  const host=url.hostname.toLowerCase().replace(/^www\./,'')
-  let id=''
-  if(host==='youtu.be')id=url.pathname.split('/').filter(Boolean)[0]||''
-  else if(['youtube.com','m.youtube.com'].includes(host)){
-   if(url.pathname==='/watch')id=url.searchParams.get('v')||''
-   else if(/^\/(shorts|embed)\//.test(url.pathname))id=url.pathname.split('/').filter(Boolean)[1]||''
-  }
-  if(!/^[\w-]{6,20}$/.test(id))return ''
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0`
- }catch{return ''}
-})
-const spotifyEmbedUrl=computed(()=>{
- const value=currentRelease.value?.externalUrl?.trim()
- if(!value)return ''
- try{
-  const url=new URL(value)
-  if(!['open.spotify.com','www.open.spotify.com'].includes(url.hostname.toLowerCase()))return ''
-  const parts=url.pathname.split('/').filter(Boolean)
-  const index=parts[0]==='intl-id'?1:0
-  const type=parts[index],id=parts[index+1]
-  if(!id||!['track','album','playlist','episode','show','artist'].includes(type))return ''
-  return `https://open.spotify.com/embed/${type}/${encodeURIComponent(id)}?utm_source=generator&theme=0`
- }catch{return ''}
-})
-const currentArtist=computed(()=>artists.find(x=>x.slug===route.params.slug))
-const currentNews=computed(()=>news.find(x=>x.slug===route.params.slug))
-const currentModule=computed(()=>['slider-create','slider-edit'].includes(String(route.name))?'slider':String(route.params.module||''))
-const currentTitle=computed(()=>route.name==='slider-create'?'Tambah Slider':route.name==='slider-edit'?'Edit Slider':route.name==='content-create'?`Tambah ${modules.find(x=>x[1]===currentModule.value)?.[0]||'Konten'}`:route.name==='content-edit'?`Edit ${modules.find(x=>x[1]===currentModule.value)?.[0]||'Konten'}`:modules.find(x=>x[1]===currentModule.value)?.[0]||'Dashboard')
-const flash=(x:string)=>{toast.value=x;setTimeout(()=>toast.value='',2200)}
-const moduleType=()=>({tentang:'about',informasi:'info',rilisan:'release',artis:'artist',berita:'news',foto:'photo',video:'video',slider:'slider'} as Record<string,string>)[currentModule.value]||currentModule.value
-const loadAdminRows=async()=>{if(route.name!=='admin'||!currentModule.value){rows.value=[];return}if(currentModule.value==='informasi'){await loadInfoEditor();return}if(currentModule.value==='program'){await loadProgramEditor();return}adminLoading.value=true;try{const type=moduleType();const payload:any=await apiRequest(`/admin/${type}`,{},true);const list=payload.data?.data||payload.data||[];rows.value=list.map((x:any)=>({id:x.id??x.key,name:x.title??x.key??x.action,sub:x.subtitle??x.value??x.properties?.title??x.user?.name??'',status:x.is_active??true,image:x.image_url??'',raw:x}))}catch(e:any){if(e.message==='UNAUTHENTICATED')router.replace('/nadiku/login');else flash(e.message)}finally{adminLoading.value=false}}
-const login=async()=>{authError.value='';authLoading.value=true;try{await loginAdmin(username.value,password.value);const redirect=typeof route.query.redirect==='string'?route.query.redirect:'/nadiku';await router.replace(redirect)}catch(e:any){authError.value=e.message||'Login gagal.'}finally{authLoading.value=false}}
-const logout=async()=>{await logoutAdmin();rows.value=[];router.replace('/nadiku/login')}
-const loadPublicContent=async()=>{try{const payload:any=await apiRequest('/public/home');const groups=payload.data||{};if(groups.slider?.length)heroSlides.splice(0,heroSlides.length,...groups.slider.map((x:any,i:number)=>({title:[x.title],text:x.description||'',button:x.subtitle||'Dengarkan Sekarang',link:x.external_url||'#rilisan',label:'Featured Story',track:x.subtitle||'',image:x.image_url||heroSlides[i%heroSlides.length]?.image||slide1Image,imageClass:i%2?'hero-photo-two':'hero-photo-one'})));if(groups.about?.[0]){aboutTitle.value=groups.about[0].title||aboutTitle.value;aboutImage.value=groups.about[0].image_url||'';aboutParagraphOne.value=groups.about[0].description||aboutParagraphOne.value;aboutParagraphTwo.value=groups.about[0].metadata?.secondary_text||aboutParagraphTwo.value}if(groups.release?.length)releases.splice(0,releases.length,...groups.release.map((x:any)=>({slug:x.slug,title:x.title,artist:x.subtitle||'',year:x.metadata?.year||'',genre:x.metadata?.genre||'',image:x.image_url||'',externalUrl:x.external_url||''})));if(groups.artist?.length)artists.splice(0,artists.length,...groups.artist.map((x:any)=>({slug:x.slug,name:x.title,role:x.subtitle||'',image:x.image_url||''})));if(groups.news?.length)news.splice(0,news.length,...groups.news.map((x:any)=>({slug:x.slug,category:x.subtitle||'Berita',date:x.metadata?.date||'',title:x.title,excerpt:x.description||'',image:x.image_url||''})));if(groups.photo?.length)gallery.splice(0,gallery.length,...groups.photo.map((x:any)=>x.image_url).filter(Boolean));if(groups.video?.length)videoGallery.splice(0,videoGallery.length,...groups.video.map((x:any)=>({title:x.title,duration:x.metadata?.duration||'',image:x.image_url||''})))}catch{}}
-const applyInfoRows=(items:any[])=>{const heading=items.find(x=>x.metadata?.kind==='heading');const services=items.filter(x=>x.metadata?.kind==='service').sort((a,b)=>a.sort_order-b.sort_order);if(heading)infoHeading.value={id:heading.id,title:heading.title,label:heading.subtitle||'',description:heading.description||'',slug:heading.slug,metadata:heading.metadata||{kind:'heading'}};if(services.length)infoServices.value=services.map(x=>({id:x.id,title:x.title,button:x.subtitle||'',description:x.description||'',slug:x.slug,metadata:x.metadata||{kind:'service'}}))}
-const loadPublicInfo=async()=>{try{const payload:any=await apiRequest('/public/infos');applyInfoRows(payload.data||[])}catch{}}
-const programIcon=(key:string)=>({disc:Disc3,activity:Activity,users:Users,handshake:Handshake}[key]||Music2)
-const applyProgramRows=(items:any[])=>{if(items.length)programSlides.splice(0,programSlides.length,...items.sort((a,b)=>a.sort_order-b.sort_order).map(x=>({id:x.id,slug:x.slug,title:x.title,text:x.description||'',icon:programIcon(x.metadata?.icon),link:x.metadata?.link||'#',iconKey:x.metadata?.icon||'disc'})));activeProgram.value=0}
-const loadPublicPrograms=async()=>{try{const payload:any=await apiRequest('/public/programs');applyProgramRows(payload.data||[])}catch{}}
-const loadPublicReleaseDetails=async()=>{try{const payload:any=await apiRequest('/public/releases');for(const item of payload.data||[])releaseDetails[item.slug]=item}catch{}}
-const loadAllPublicContent=async()=>{publicLoading.value=true;try{await Promise.all([loadPublicContent(),loadPublicReleaseDetails(),loadPublicInfo(),loadPublicPrograms()])}finally{publicLoading.value=false}}
-const loadProgramEditor=async()=>{adminLoading.value=true;programError.value='';try{const payload:any=await apiRequest('/admin/program?per_page=20',{},true);applyProgramRows(payload.data?.data||[])}catch(e:any){programError.value=e.message||'Gagal memuat Slide Program.'}finally{adminLoading.value=false}}
-const saveProgramEditor=async()=>{programSaving.value=true;programError.value='';try{for(const [i,item] of programSlides.entries())await apiRequest(`/admin/program/${item.id}`,{method:'PUT',body:JSON.stringify({title:item.title,slug:item.slug,description:item.text,metadata:{link:item.link,icon:item.iconKey},sort_order:i,is_active:true})},true);flash('Slide Program berhasil diperbarui.')}catch(e:any){programError.value=e.message||'Slide Program gagal disimpan.'}finally{programSaving.value=false}}
-const loadInfoEditor=async()=>{adminLoading.value=true;infoError.value='';try{const payload:any=await apiRequest('/admin/info?per_page=20',{},true);applyInfoRows(payload.data?.data||[])}catch(e:any){infoError.value=e.message||'Gagal memuat Informasi Lain.'}finally{adminLoading.value=false}}
-const saveInfoEditor=async()=>{infoSaving.value=true;infoError.value='';try{const records=[{...infoHeading.value,subtitle:infoHeading.value.label,sort_order:0,is_active:true},...infoServices.value.map((x,i)=>({...x,subtitle:x.button,sort_order:i+1,is_active:true}))];for(const item of records){const body={title:item.title,slug:item.slug,subtitle:item.subtitle,description:item.description,metadata:item.metadata,sort_order:item.sort_order,is_active:true};await apiRequest(`/admin/info/${item.id}`,{method:'PUT',body:JSON.stringify(body)},true)}flash('Informasi Lain berhasil diperbarui.')}catch(e:any){infoError.value=e.message||'Informasi gagal disimpan.'}finally{infoSaving.value=false}}
-const resetSliderForm=()=>{sliderForm.value={title:'',subtitle:'',description:'',image_url:'',external_url:'',sort_order:rows.value.length,is_active:true};sliderError.value=''}
-const loadSliderForm=async()=>{resetSliderForm();if(route.name!=='slider-edit')return;adminLoading.value=true;try{const payload:any=await apiRequest(`/admin/slider/${route.params.id}`,{},true);const item=payload.data;if(!item){sliderError.value='Data slider tidak ditemukan.';return}sliderForm.value={title:item.title||'',subtitle:item.subtitle||'',description:item.description||'',image_url:item.image_url||'',external_url:item.external_url||'',sort_order:item.sort_order??0,is_active:Boolean(item.is_active)}}catch(e:any){sliderError.value=e.message||'Gagal memuat slider.'}finally{adminLoading.value=false}}
-const saveSlider=async()=>{sliderError.value='';if(!sliderForm.value.title.trim()){sliderError.value='Judul slider wajib diisi.';return}sliderSaving.value=true;try{const editing=route.name==='slider-edit';const slug=sliderForm.value.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||`slider-${Date.now()}`;const path=editing?`/admin/slider/${route.params.id}`:'/admin/slider';const body=editing?{...sliderForm.value}:{...sliderForm.value,slug};await apiRequest(path,{method:editing?'PUT':'POST',body:JSON.stringify(body)},true);flash(editing?'Slider berhasil diperbarui.':'Slider baru berhasil ditambahkan.');await router.push('/nadiku/slider')}catch(e:any){sliderError.value=e.message||'Slider gagal disimpan.'}finally{sliderSaving.value=false}}
-const uploadImage=async(file:File|undefined,target:'slider'|'content')=>{if(!file)return;imageUploadError.value='';if(!['image/jpeg','image/png','image/webp'].includes(file.type)){imageUploadError.value='Gunakan gambar JPG, PNG, atau WebP.';return}if(file.size>8*1024*1024){imageUploadError.value='Ukuran gambar maksimal 8 MB.';return}imageUploading.value=target;try{const payload=await uploadAdminImage(file);if(target==='slider')sliderForm.value.image_url=payload.data.url;else contentForm.value.image_url=payload.data.url;flash('Gambar berhasil diunggah.')}catch(e:any){imageUploadError.value=e.message||'Gambar gagal diunggah.'}finally{imageUploading.value=''}}
-const pickUpload=(event:Event,target:'slider'|'content')=>uploadImage((event.target as HTMLInputElement).files?.[0],target)
-const dropUpload=(event:DragEvent,target:'slider'|'content')=>uploadImage(event.dataTransfer?.files?.[0],target)
-const clearUpload=(target:'slider'|'content')=>{if(target==='slider')sliderForm.value.image_url='';else contentForm.value.image_url='';imageUploadError.value=''}
-const resetContentForm=()=>{contentForm.value={title:'',slug:'',subtitle:'',description:'',image_url:'',external_url:'',sort_order:0,is_active:true,metadata:{secondary_text:'',year:'',genre:'',music_genre:'',youtube_url:'',date:'',duration:''}};contentError.value=''}
-const loadContentForm=async()=>{resetContentForm();if(route.name!=='content-edit')return;adminLoading.value=true;try{const payload:any=await apiRequest(`/admin/${moduleType()}/${route.params.id}`,{},true);const x=payload.data;contentForm.value={title:x.title||'',slug:x.slug||'',subtitle:x.subtitle||'',description:x.description||'',image_url:x.image_url||'',external_url:x.external_url||'',sort_order:x.sort_order??0,is_active:Boolean(x.is_active),metadata:{secondary_text:x.metadata?.secondary_text||'',year:x.metadata?.year||'',genre:x.metadata?.genre||'',music_genre:x.metadata?.music_genre||'',youtube_url:x.metadata?.youtube_url||'',date:x.metadata?.date||'',duration:x.metadata?.duration||''}}}catch(e:any){contentError.value=e.message||'Gagal memuat data.'}finally{adminLoading.value=false}}
-const saveContent=async()=>{contentError.value='';if(!contentForm.value.title.trim()){contentError.value='Judul wajib diisi.';return}contentSaving.value=true;try{const editing=route.name==='content-edit';const generatedSlug=contentForm.value.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||`konten-${Date.now()}`;const body={...contentForm.value,slug:contentForm.value.slug.trim()||generatedSlug,metadata:Object.fromEntries(Object.entries(contentForm.value.metadata).filter(([,v])=>v!==''))};await apiRequest(`/admin/${moduleType()}${editing?`/${route.params.id}`:''}`,{method:editing?'PUT':'POST',body:JSON.stringify(body)},true);flash(editing?'Data berhasil diperbarui.':'Data baru berhasil ditambahkan.');await router.push(`/nadiku/${currentModule.value}`)}catch(e:any){contentError.value=e.message||'Data gagal disimpan.'}finally{contentSaving.value=false}}
-const addRow=async()=>{const type=moduleType();if(type==='slider'){await router.push('/nadiku/slider/tambah');return}if(['about','release','artist','news','photo','video'].includes(type)){await router.push(`/nadiku/${currentModule.value}/tambah`);return}if(['settings','activity'].includes(type)){flash(type==='activity'?'Activity Log hanya dapat dibaca.':'Gunakan tombol edit untuk mengubah pengaturan.');return}}
-const editRow=async(row:any)=>{const type=moduleType();if(type==='slider'){await router.push(`/nadiku/slider/${row.id}/edit`);return}if(['about','release','artist','news','photo','video'].includes(type)){await router.push(`/nadiku/${currentModule.value}/${row.id}/edit`);return}if(type==='activity'){flash('Activity Log tidak dapat diubah.');return}const value=prompt(`Ubah nilai ${row.name}:`,row.sub)?.trim();if(value===undefined||value===null)return;await apiRequest('/admin/settings',{method:'PUT',body:JSON.stringify({items:{[row.name]:value}})},true);await loadAdminRows();flash('Perubahan disimpan.')}
-const toggleRow=async(row:any)=>{const type=moduleType();if(['settings','activity'].includes(type))return;row.status=!row.status;await apiRequest(`/admin/${type}/${row.id}`,{method:'PUT',body:JSON.stringify({title:row.name,slug:row.raw.slug,is_active:row.status})},true);flash(row.status?'Konten diterbitkan.':'Konten disembunyikan.')}
-const removeRow=async(id:number|string,name:string)=>{const type=moduleType();if(['settings','activity'].includes(type))return;if(confirm(`Hapus ${name}?`)){await apiRequest(`/admin/${type}/${id}`,{method:'DELETE'},true);await loadAdminRows();flash('Konten dihapus.')}}
-watch(()=>[route.name,route.params.id,route.params.module],()=>{query.value='';if(route.name==='admin')loadAdminRows();else if(['slider-create','slider-edit'].includes(String(route.name)))loadSliderForm();else if(['content-create','content-edit'].includes(String(route.name)))loadContentForm();else if(route.name!=='login')loadAllPublicContent()})
+const route = useRoute(),
+    router = useRouter(),
+    menuOpen = ref(false),
+    sideOpen = ref(false),
+    query = ref(""),
+    toast = ref(""),
+    selectedVideo = ref<number | null>(null);
+const username = ref(""),
+    password = ref(""),
+    authError = ref(""),
+    authLoading = ref(false),
+    adminLoading = ref(false);
+const sliderSaving = ref(false),
+    sliderError = ref("");
+const sliderForm = ref({
+    title: "",
+    subtitle: "",
+    description: "",
+    image_url: "",
+    external_url: "",
+    sort_order: 0,
+    is_active: true,
+});
+const contentSaving = ref(false),
+    contentError = ref("");
+const imageUploading = ref<"slider" | "content" | "">(""),
+    imageUploadError = ref("");
+const publicLoading = ref(true);
+const releaseGenres = [
+    "Pop",
+    "Indie Pop",
+    "Rock",
+    "Alternative Rock",
+    "Jazz",
+    "R&B",
+    "Soul",
+    "Hip Hop",
+    "Electronic",
+    "Folk",
+    "Dangdut",
+    "Keroncong",
+    "Reggae",
+    "Metal",
+    "Punk",
+    "Classical",
+    "World Music",
+    "Lainnya",
+];
+const contentForm = ref({
+    title: "",
+    slug: "",
+    subtitle: "",
+    description: "",
+    image_url: "",
+    external_url: "",
+    sort_order: 0,
+    is_active: true,
+    metadata: {
+        secondary_text: "",
+        year: "",
+        genre: "",
+        music_genre: "",
+        youtube_url: "",
+        date: "",
+        duration: "",
+        link_enabled: false,
+    } as Record<string, string | boolean>,
+});
+const homeBanner = ref({ image: "", link: "", linkEnabled: false, title: "" });
+const aboutTitle = ref("13 Nadi Musik");
+const aboutImage = ref("");
+const aboutParagraphOne = ref(
+    "Berawal dari label musik digital, di tahun 2019, 13NadiMusik kini berevolusi menjadi “Digital content creator partner”, banyaknya para content creator, yang memiliki potensi untuk bisa menghadirkan konten konten berkualitas, namun terkendala oleh hal-hal teknis, mendasari pemikiran 13NadiMusik untuk hadir memberikan solusinya.",
+);
+const aboutParagraphTwo = ref(
+    "Ide orisinil dipadu dengan bakat kuat, kadang tidak cukup, urusan teknis, seperti algoritma platform, kualitas audio visual, digital marketing dan hal teknis lainnya, membuat para content creator, jadi kurang fokus dengan esensi kreatif dan visi misi konten. Kami hadir sebagai partner para konten kreator, agar para content creator bisa lebih fokus berkarya, mewujudkan ide-ide kreatif, untuk menghibur, mengedukasi, atau membagikan pengalaman yang inspiratif untuk viewers nya.",
+);
+const infoHeading = ref({
+    id: 0,
+    title: "Dari ide pertama hingga didengar dunia.",
+    label: "EKOSISTEM KREATIF",
+    description:
+        "Kami membangun perjalanan karya yang terarah, autentik, dan dekat dengan pendengar.",
+    slug: "ecosystem-heading",
+    metadata: { kind: "heading" },
+});
+const infoServices = ref([
+    {
+        id: 0,
+        title: "Artist Development",
+        button: "Kenali Artis",
+        description:
+            "Pengembangan identitas, arah musikal, dan strategi karya untuk setiap fase perjalanan artis.",
+        slug: "artist-development",
+        metadata: { kind: "service", link: "#artis", icon: "disc" },
+    },
+    {
+        id: 0,
+        title: "Music Production",
+        button: "Lihat Rilisan",
+        description:
+            "Pendampingan kreatif dari penulisan, rekaman, hingga karya siap hadir dengan karakter terbaiknya.",
+        slug: "music-production",
+        metadata: { kind: "service", link: "#rilisan", icon: "music" },
+    },
+    {
+        id: 0,
+        title: "Digital Distribution",
+        button: "Berkolaborasi",
+        description:
+            "Distribusi dan kampanye digital yang membantu musik menjangkau komunitas pendengar yang tepat.",
+        slug: "digital-distribution",
+        metadata: { kind: "service", link: "#kolaborasi", icon: "activity" },
+    },
+]);
+const infoSaving = ref(false),
+    infoError = ref("");
+const heroSlides = reactive([
+    {
+        title: ["The Dusty Rusty"],
+        text: "The Dusty Rusty is a band originating from Bogor, West Java, Indonesia. Its members, initially friends from junior high school, reunited in their 20s to form the band, using it as a platform for self-expression and creativity. The name 'The Dusty Rusty', meaning 'dust and rust', was chosen because philosophically, it symbolizes something redolent of the 'past'.",
+        button: "Dengarkan Sekarang",
+        link: "#rilisan",
+        label: "Featured Story",
+        track: "Pulang Perlahan — Arunika Senja",
+        image: slide1Image,
+        imageClass: "hero-photo-one",
+    },
+    {
+        title: ["Temukan Suara", "Yang Baru", "Hari Ini"],
+        text: "Dengarkan rilisan terbaru dari musisi independen dengan karakter, cerita, dan warna yang berbeda.",
+        button: "Lihat Rilisan Baru",
+        link: "#rilisan",
+        label: "New Release",
+        track: "Kota Hujan — Ruang Tengah",
+        image: slide2Image,
+        imageClass: "hero-photo-two",
+    },
+]);
+const programSlides = reactive([
+    {
+        id: 0,
+        slug: "musik-independen",
+        title: "Musik Independen",
+        text: "Ruang untuk karya yang jujur, berkarakter, dan tumbuh bersama pendengarnya.",
+        icon: Disc3,
+        link: "#rilisan",
+        iconKey: "disc",
+    },
+    {
+        id: 0,
+        slug: "live-session",
+        title: "Live Session",
+        text: "Penampilan intim yang menangkap energi musisi dalam format panggung yang autentik.",
+        icon: Activity,
+        link: "#galeri",
+        iconKey: "activity",
+    },
+    {
+        id: 0,
+        slug: "artist-spotlight",
+        title: "Artist Spotlight",
+        text: "Mengenal lebih dekat cerita, proses kreatif, dan perjalanan para artis 13 Nadi.",
+        icon: Users,
+        link: "#berita",
+        iconKey: "users",
+    },
+    {
+        id: 0,
+        slug: "creative-collaboration",
+        title: "Creative Collaboration",
+        text: "Kolaborasi lintas disiplin untuk melahirkan pengalaman musik yang lebih bermakna.",
+        icon: Handshake,
+        link: "#kolaborasi",
+        iconKey: "handshake",
+    },
+]);
+const programSaving = ref(false),
+    programError = ref("");
+const activeSlide = ref(0),
+    slidePaused = ref(false),
+    scrollProgress = ref(0);
+const activeProgram = ref(0),
+    programPaused = ref(false);
+let slideTimer: number | undefined,
+    programTimer: number | undefined,
+    revealObserver: IntersectionObserver | undefined;
+const goSlide = (index: number) => {
+    activeSlide.value = (index + heroSlides.length) % heroSlides.length;
+};
+const nextSlide = () => goSlide(activeSlide.value + 1);
+const startSlider = () => {
+    slideTimer = window.setInterval(() => {
+        if (!slidePaused.value) nextSlide();
+    }, 6500);
+};
+const goProgram = (index: number) => {
+    activeProgram.value = (index + programSlides.length) % programSlides.length;
+};
+const startProgramSlider = () => {
+    programTimer = window.setInterval(() => {
+        if (!programPaused.value) goProgram(activeProgram.value + 1);
+    }, 4800);
+};
+const updateScrollProgress = () => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    scrollProgress.value = max > 0 ? (scrollY / max) * 100 : 0;
+};
+onMounted(() => {
+    startSlider();
+    startProgramSlider();
+    window.addEventListener("scroll", updateScrollProgress, { passive: true });
+    updateScrollProgress();
+    if (route.name === "admin") loadAdminRows();
+    else if (["slider-create", "slider-edit"].includes(String(route.name)))
+        loadSliderForm();
+    else if (["content-create", "content-edit"].includes(String(route.name)))
+        loadContentForm();
+    else if (route.name !== "login") loadAllPublicContent();
+    requestAnimationFrame(() => {
+        const items = document.querySelectorAll(".reveal-item");
+        revealObserver = new IntersectionObserver(
+            (entries) =>
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("is-visible");
+                        revealObserver?.unobserve(entry.target);
+                    }
+                }),
+            { threshold: 0.14, rootMargin: "0px 0px -55px" },
+        );
+        items.forEach((item) => revealObserver?.observe(item));
+    });
+});
+onUnmounted(() => {
+    if (slideTimer) window.clearInterval(slideTimer);
+    if (programTimer) window.clearInterval(programTimer);
+    window.removeEventListener("scroll", updateScrollProgress);
+    revealObserver?.disconnect();
+});
+type ReleaseItem = {
+    slug: string;
+    title: string;
+    artist: string;
+    year: string;
+    genre: string;
+    image: string;
+    externalUrl?: string;
+};
+const releases = reactive<ReleaseItem[]>([
+    {
+        slug: "jarak-kita",
+        title: "Jarak Kita",
+        artist: "Aurelia",
+        year: "2024",
+        genre: "Single",
+        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85",
+    },
+    {
+        slug: "kota-hujan",
+        title: "Kota Hujan",
+        artist: "Ruang Tengah",
+        year: "2024",
+        genre: "Single",
+        image: "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=85",
+    },
+    {
+        slug: "berjalan-lagi",
+        title: "Berjalan Lagi",
+        artist: "Langit Senja",
+        year: "2024",
+        genre: "EP",
+        image: "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=85",
+    },
+    {
+        slug: "samudra",
+        title: "Samudra",
+        artist: "Mata Air",
+        year: "2024",
+        genre: "Single",
+        image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=85",
+    },
+]);
+const artists = reactive([
+    {
+        slug: "aurelia",
+        name: "Aurelia",
+        role: "Solo Artist",
+        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=85",
+    },
+    {
+        slug: "ruang-tengah",
+        name: "Ruang Tengah",
+        role: "Band",
+        image: "https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=800&q=85",
+    },
+    {
+        slug: "langit-senja",
+        name: "Langit Senja",
+        role: "Band",
+        image: "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=85",
+    },
+    {
+        slug: "mata-air",
+        name: "Mata Air",
+        role: "Band",
+        image: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=800&q=85",
+    },
+]);
+const news = reactive([
+    {
+        slug: "live-session-jakarta",
+        category: "Live Session",
+        date: "22 Agustus 2026",
+        title: "13 Nadi Live Session Membawa Suara Baru ke Jakarta",
+        excerpt:
+            "Pertunjukan intim yang mempertemukan musisi, cerita, dan pendengar dalam satu panggung.",
+        image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1000&q=88",
+    },
+    {
+        slug: "proses-kreatif-studio",
+        category: "Behind The Sound",
+        date: "18 Agustus 2026",
+        title: "Di Balik Studio: Merancang Karakter Sebuah Lagu",
+        excerpt:
+            "Menjelajahi proses kreatif dari gagasan pertama hingga aransemen menemukan bentuk terbaiknya.",
+        image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1000&q=88",
+    },
+    {
+        slug: "artist-spotlight-aurelia",
+        category: "Artist Spotlight",
+        date: "12 Agustus 2026",
+        title: "Aurelia dan Keberanian Bercerita Lewat Musik",
+        excerpt:
+            "Perjalanan personal tentang keberanian, kejujuran, dan suara yang tumbuh bersama pendengar.",
+        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=88",
+    },
+    {
+        slug: "kolaborasi-lintas-suara",
+        category: "Kolaborasi",
+        date: "8 Agustus 2026",
+        title: "Ketika Musik, Visual, dan Panggung Menjadi Satu",
+        excerpt:
+            "Kolaborasi lintas disiplin menghadirkan pengalaman pertunjukan yang lebih hidup dan bermakna.",
+        image: "https://images.unsplash.com/photo-1521337581100-8ca9a73a5f79?auto=format&fit=crop&w=1000&q=88",
+    },
+]);
+const gallery = reactive([
+    "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1521337581100-8ca9a73a5f79?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85",
+]);
+const videoGallery = reactive([
+    {
+        title: "Live Session — Suara dari Panggung",
+        duration: "04:28",
+        image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1000&q=88",
+    },
+    {
+        title: "Behind The Sound — Studio Stories",
+        duration: "06:12",
+        image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1000&q=88",
+    },
+    {
+        title: "Artist Spotlight — Cerita di Balik Nada",
+        duration: "03:46",
+        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=88",
+    },
+]);
+const modules = [
+    ["Dashboard", "", LayoutDashboard],
+    ["Slider Hero", "slider", Image],
+    ["Slide Program", "program", Activity],
+    ["Banner", "banner", Image],
+    ["Tentang", "tentang", Disc3],
+    ["Informasi Lain", "informasi", Activity],
+    ["Rilisan", "rilisan", Music2],
+    ["Artis", "artis", Users],
+    ["Berita", "berita", Activity],
+    ["Galeri Foto", "foto", Image],
+    ["Galeri Video", "video", Film],
+    ["Pengaturan", "settings", Settings],
+    ["Activity Log", "activity", Activity],
+] as const;
+const rows = ref<any[]>([]);
+const filtered = computed(() =>
+    rows.value.filter((r) =>
+        r.name.toLowerCase().includes(query.value.toLowerCase()),
+    ),
+);
+const currentRelease = computed(() =>
+    releases.find((x) => x.slug === route.params.slug),
+);
+const releaseDetails = reactive<Record<string, any>>({});
+const currentReleaseDescription = computed(
+    () => releaseDetails[String(route.params.slug)]?.description || "",
+);
+const currentReleaseMusicGenre = computed(
+    () =>
+        releaseDetails[String(route.params.slug)]?.metadata?.music_genre || "",
+);
+const currentReleaseYoutubeUrl = computed(
+    () =>
+        releaseDetails[String(route.params.slug)]?.metadata?.youtube_url || "",
+);
+const youtubeEmbedUrl = computed(() => {
+    const value = currentReleaseYoutubeUrl.value.trim();
+    if (!value) return "";
+    try {
+        const url = new URL(value);
+        const host = url.hostname.toLowerCase().replace(/^www\./, "");
+        let id = "";
+        if (host === "youtu.be")
+            id = url.pathname.split("/").filter(Boolean)[0] || "";
+        else if (["youtube.com", "m.youtube.com"].includes(host)) {
+            if (url.pathname === "/watch") id = url.searchParams.get("v") || "";
+            else if (/^\/(shorts|embed)\//.test(url.pathname))
+                id = url.pathname.split("/").filter(Boolean)[1] || "";
+        }
+        if (!/^[\w-]{6,20}$/.test(id)) return "";
+        return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
+    } catch {
+        return "";
+    }
+});
+const spotifyEmbedUrl = computed(() => {
+    const value = currentRelease.value?.externalUrl?.trim();
+    if (!value) return "";
+    try {
+        const url = new URL(value);
+        if (
+            !["open.spotify.com", "www.open.spotify.com"].includes(
+                url.hostname.toLowerCase(),
+            )
+        )
+            return "";
+        const parts = url.pathname.split("/").filter(Boolean);
+        const index = parts[0] === "intl-id" ? 1 : 0;
+        const type = parts[index],
+            id = parts[index + 1];
+        if (
+            !id ||
+            ![
+                "track",
+                "album",
+                "playlist",
+                "episode",
+                "show",
+                "artist",
+            ].includes(type)
+        )
+            return "";
+        return `https://open.spotify.com/embed/${type}/${encodeURIComponent(id)}?utm_source=generator&theme=0`;
+    } catch {
+        return "";
+    }
+});
+const currentArtist = computed(() =>
+    artists.find((x) => x.slug === route.params.slug),
+);
+const currentNews = computed(() =>
+    news.find((x) => x.slug === route.params.slug),
+);
+const currentModule = computed(() =>
+    ["slider-create", "slider-edit"].includes(String(route.name))
+        ? "slider"
+        : String(route.params.module || ""),
+);
+const currentTitle = computed(() =>
+    route.name === "slider-create"
+        ? "Tambah Slider"
+        : route.name === "slider-edit"
+          ? "Edit Slider"
+          : route.name === "content-create"
+            ? `Tambah ${modules.find((x) => x[1] === currentModule.value)?.[0] || "Konten"}`
+            : route.name === "content-edit"
+              ? `Edit ${modules.find((x) => x[1] === currentModule.value)?.[0] || "Konten"}`
+              : modules.find((x) => x[1] === currentModule.value)?.[0] ||
+                "Dashboard",
+);
+const flash = (x: string) => {
+    toast.value = x;
+    setTimeout(() => (toast.value = ""), 2200);
+};
+const moduleType = () =>
+    (
+        ({
+            banner: "banner",
+            tentang: "about",
+            informasi: "info",
+            rilisan: "release",
+            artis: "artist",
+            berita: "news",
+            foto: "photo",
+            video: "video",
+            slider: "slider",
+        }) as Record<string, string>
+    )[currentModule.value] || currentModule.value;
+const loadAdminRows = async () => {
+    if (route.name !== "admin" || !currentModule.value) {
+        rows.value = [];
+        return;
+    }
+    if (currentModule.value === "informasi") {
+        await loadInfoEditor();
+        return;
+    }
+    if (currentModule.value === "program") {
+        await loadProgramEditor();
+        return;
+    }
+    adminLoading.value = true;
+    try {
+        const type = moduleType();
+        const payload: any = await apiRequest(`/admin/${type}`, {}, true);
+        const list = payload.data?.data || payload.data || [];
+        rows.value = list.map((x: any) => ({
+            id: x.id ?? x.key,
+            name: x.title ?? x.key ?? x.action,
+            sub:
+                x.subtitle ??
+                x.value ??
+                x.properties?.title ??
+                x.user?.name ??
+                "",
+            status: x.is_active ?? true,
+            image: x.image_url ?? "",
+            raw: x,
+        }));
+    } catch (e: any) {
+        if (e.message === "UNAUTHENTICATED") router.replace("/nadiku/login");
+        else flash(e.message);
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const login = async () => {
+    authError.value = "";
+    authLoading.value = true;
+    try {
+        await loginAdmin(username.value, password.value);
+        const redirect =
+            typeof route.query.redirect === "string"
+                ? route.query.redirect
+                : "/nadiku";
+        await router.replace(redirect);
+    } catch (e: any) {
+        authError.value = e.message || "Login gagal.";
+    } finally {
+        authLoading.value = false;
+    }
+};
+const logout = async () => {
+    await logoutAdmin();
+    rows.value = [];
+    router.replace("/nadiku/login");
+};
+const loadPublicContent = async () => {
+    try {
+        const payload: any = await apiRequest("/public/home");
+        const groups = payload.data || {};
+        if (groups.slider?.length)
+            heroSlides.splice(
+                0,
+                heroSlides.length,
+                ...groups.slider.map((x: any, i: number) => ({
+                    title: [x.title],
+                    text: x.description || "",
+                    button: x.subtitle || "Dengarkan Sekarang",
+                    link: x.external_url || "#rilisan",
+                    label: "Featured Story",
+                    track: x.subtitle || "",
+                    image:
+                        x.image_url ||
+                        heroSlides[i % heroSlides.length]?.image ||
+                        slide1Image,
+                    imageClass: i % 2 ? "hero-photo-two" : "hero-photo-one",
+                })),
+            );
+        if (groups.about?.[0]) {
+            aboutTitle.value = groups.about[0].title || aboutTitle.value;
+            aboutImage.value = groups.about[0].image_url || "";
+            aboutParagraphOne.value =
+                groups.about[0].description || aboutParagraphOne.value;
+            aboutParagraphTwo.value =
+                groups.about[0].metadata?.secondary_text ||
+                aboutParagraphTwo.value;
+        }
+        if (groups.release?.length)
+            releases.splice(
+                0,
+                releases.length,
+                ...groups.release.map((x: any) => ({
+                    slug: x.slug,
+                    title: x.title,
+                    artist: x.subtitle || "",
+                    year: x.metadata?.year || "",
+                    genre: x.metadata?.genre || "",
+                    image: x.image_url || "",
+                    externalUrl: x.external_url || "",
+                })),
+            );
+        if (groups.artist?.length)
+            artists.splice(
+                0,
+                artists.length,
+                ...groups.artist.map((x: any) => ({
+                    slug: x.slug,
+                    name: x.title,
+                    role: x.subtitle || "",
+                    image: x.image_url || "",
+                })),
+            );
+        if (groups.news?.length)
+            news.splice(
+                0,
+                news.length,
+                ...groups.news.map((x: any) => ({
+                    slug: x.slug,
+                    category: x.subtitle || "Berita",
+                    date: x.metadata?.date || "",
+                    title: x.title,
+                    excerpt: x.description || "",
+                    image: x.image_url || "",
+                })),
+            );
+        if (groups.photo?.length)
+            gallery.splice(
+                0,
+                gallery.length,
+                ...groups.photo.map((x: any) => x.image_url).filter(Boolean),
+            );
+        if (groups.video?.length)
+            videoGallery.splice(
+                0,
+                videoGallery.length,
+                ...groups.video.map((x: any) => ({
+                    title: x.title,
+                    duration: x.metadata?.duration || "",
+                    image: x.image_url || "",
+                })),
+            );
+    } catch {}
+};
+const applyInfoRows = (items: any[]) => {
+    const heading = items.find((x) => x.metadata?.kind === "heading");
+    const services = items
+        .filter((x) => x.metadata?.kind === "service")
+        .sort((a, b) => a.sort_order - b.sort_order);
+    if (heading)
+        infoHeading.value = {
+            id: heading.id,
+            title: heading.title,
+            label: heading.subtitle || "",
+            description: heading.description || "",
+            slug: heading.slug,
+            metadata: heading.metadata || { kind: "heading" },
+        };
+    if (services.length)
+        infoServices.value = services.map((x) => ({
+            id: x.id,
+            title: x.title,
+            button: x.subtitle || "",
+            description: x.description || "",
+            slug: x.slug,
+            metadata: x.metadata || { kind: "service" },
+        }));
+};
+const loadPublicInfo = async () => {
+    try {
+        const payload: any = await apiRequest("/public/infos");
+        applyInfoRows(payload.data || []);
+    } catch {}
+};
+const programIcon = (key: string) =>
+    ({ disc: Disc3, activity: Activity, users: Users, handshake: Handshake })[
+        key
+    ] || Music2;
+const applyProgramRows = (items: any[]) => {
+    if (items.length)
+        programSlides.splice(
+            0,
+            programSlides.length,
+            ...items
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map((x) => ({
+                    id: x.id,
+                    slug: x.slug,
+                    title: x.title,
+                    text: x.description || "",
+                    icon: programIcon(x.metadata?.icon),
+                    link: x.metadata?.link || "#",
+                    iconKey: x.metadata?.icon || "disc",
+                })),
+        );
+    activeProgram.value = 0;
+};
+const loadPublicPrograms = async () => {
+    try {
+        const payload: any = await apiRequest("/public/programs");
+        applyProgramRows(payload.data || []);
+    } catch {}
+};
+const loadPublicReleaseDetails = async () => {
+    try {
+        const payload: any = await apiRequest("/public/releases");
+        for (const item of payload.data || []) releaseDetails[item.slug] = item;
+    } catch {}
+};
+const loadPublicBanner = async () => {
+    try {
+        const payload: any = await apiRequest("/public/banners");
+        const banner = payload.data?.[0];
+        homeBanner.value = banner
+            ? {
+                  image: banner.image_url || "",
+                  link: banner.external_url || "",
+                  linkEnabled: Boolean(banner.metadata?.link_enabled),
+                  title: banner.title || "Banner 13 Nadi",
+              }
+            : { image: "", link: "", linkEnabled: false, title: "" };
+    } catch {
+        homeBanner.value = {
+            image: "",
+            link: "",
+            linkEnabled: false,
+            title: "",
+        };
+    }
+};
+const loadAllPublicContent = async () => {
+    publicLoading.value = true;
+    try {
+        await Promise.all([
+            loadPublicContent(),
+            loadPublicReleaseDetails(),
+            loadPublicInfo(),
+            loadPublicPrograms(),
+            loadPublicBanner(),
+        ]);
+    } finally {
+        publicLoading.value = false;
+    }
+};
+const loadProgramEditor = async () => {
+    adminLoading.value = true;
+    programError.value = "";
+    try {
+        const payload: any = await apiRequest(
+            "/admin/program?per_page=20",
+            {},
+            true,
+        );
+        applyProgramRows(payload.data?.data || []);
+    } catch (e: any) {
+        programError.value = e.message || "Gagal memuat Slide Program.";
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const saveProgramEditor = async () => {
+    programSaving.value = true;
+    programError.value = "";
+    try {
+        for (const [i, item] of programSlides.entries())
+            await apiRequest(
+                `/admin/program/${item.id}`,
+                {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        title: item.title,
+                        slug: item.slug,
+                        description: item.text,
+                        metadata: { link: item.link, icon: item.iconKey },
+                        sort_order: i,
+                        is_active: true,
+                    }),
+                },
+                true,
+            );
+        flash("Slide Program berhasil diperbarui.");
+    } catch (e: any) {
+        programError.value = e.message || "Slide Program gagal disimpan.";
+    } finally {
+        programSaving.value = false;
+    }
+};
+const loadInfoEditor = async () => {
+    adminLoading.value = true;
+    infoError.value = "";
+    try {
+        const payload: any = await apiRequest(
+            "/admin/info?per_page=20",
+            {},
+            true,
+        );
+        applyInfoRows(payload.data?.data || []);
+    } catch (e: any) {
+        infoError.value = e.message || "Gagal memuat Informasi Lain.";
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const saveInfoEditor = async () => {
+    infoSaving.value = true;
+    infoError.value = "";
+    try {
+        const records = [
+            {
+                ...infoHeading.value,
+                subtitle: infoHeading.value.label,
+                sort_order: 0,
+                is_active: true,
+            },
+            ...infoServices.value.map((x, i) => ({
+                ...x,
+                subtitle: x.button,
+                sort_order: i + 1,
+                is_active: true,
+            })),
+        ];
+        for (const item of records) {
+            const body = {
+                title: item.title,
+                slug: item.slug,
+                subtitle: item.subtitle,
+                description: item.description,
+                metadata: item.metadata,
+                sort_order: item.sort_order,
+                is_active: true,
+            };
+            await apiRequest(
+                `/admin/info/${item.id}`,
+                { method: "PUT", body: JSON.stringify(body) },
+                true,
+            );
+        }
+        flash("Informasi Lain berhasil diperbarui.");
+    } catch (e: any) {
+        infoError.value = e.message || "Informasi gagal disimpan.";
+    } finally {
+        infoSaving.value = false;
+    }
+};
+const resetSliderForm = () => {
+    sliderForm.value = {
+        title: "",
+        subtitle: "",
+        description: "",
+        image_url: "",
+        external_url: "",
+        sort_order: rows.value.length,
+        is_active: true,
+    };
+    sliderError.value = "";
+};
+const loadSliderForm = async () => {
+    resetSliderForm();
+    if (route.name !== "slider-edit") return;
+    adminLoading.value = true;
+    try {
+        const payload: any = await apiRequest(
+            `/admin/slider/${route.params.id}`,
+            {},
+            true,
+        );
+        const item = payload.data;
+        if (!item) {
+            sliderError.value = "Data slider tidak ditemukan.";
+            return;
+        }
+        sliderForm.value = {
+            title: item.title || "",
+            subtitle: item.subtitle || "",
+            description: item.description || "",
+            image_url: item.image_url || "",
+            external_url: item.external_url || "",
+            sort_order: item.sort_order ?? 0,
+            is_active: Boolean(item.is_active),
+        };
+    } catch (e: any) {
+        sliderError.value = e.message || "Gagal memuat slider.";
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const saveSlider = async () => {
+    sliderError.value = "";
+    if (!sliderForm.value.title.trim()) {
+        sliderError.value = "Judul slider wajib diisi.";
+        return;
+    }
+    sliderSaving.value = true;
+    try {
+        const editing = route.name === "slider-edit";
+        const slug =
+            sliderForm.value.title
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/(^-|-$)/g, "") || `slider-${Date.now()}`;
+        const path = editing
+            ? `/admin/slider/${route.params.id}`
+            : "/admin/slider";
+        const body = editing
+            ? { ...sliderForm.value }
+            : { ...sliderForm.value, slug };
+        await apiRequest(
+            path,
+            { method: editing ? "PUT" : "POST", body: JSON.stringify(body) },
+            true,
+        );
+        flash(
+            editing
+                ? "Slider berhasil diperbarui."
+                : "Slider baru berhasil ditambahkan.",
+        );
+        await router.push("/nadiku/slider");
+    } catch (e: any) {
+        sliderError.value = e.message || "Slider gagal disimpan.";
+    } finally {
+        sliderSaving.value = false;
+    }
+};
+const uploadImage = async (
+    file: File | undefined,
+    target: "slider" | "content",
+) => {
+    if (!file) return;
+    imageUploadError.value = "";
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        imageUploadError.value = "Gunakan gambar JPG, PNG, atau WebP.";
+        return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+        imageUploadError.value = "Ukuran gambar maksimal 8 MB.";
+        return;
+    }
+    imageUploading.value = target;
+    try {
+        const payload = await uploadAdminImage(file);
+        if (target === "slider") sliderForm.value.image_url = payload.data.url;
+        else contentForm.value.image_url = payload.data.url;
+        flash("Gambar berhasil diunggah.");
+    } catch (e: any) {
+        imageUploadError.value = e.message || "Gambar gagal diunggah.";
+    } finally {
+        imageUploading.value = "";
+    }
+};
+const pickUpload = (event: Event, target: "slider" | "content") =>
+    uploadImage((event.target as HTMLInputElement).files?.[0], target);
+const dropUpload = (event: DragEvent, target: "slider" | "content") =>
+    uploadImage(event.dataTransfer?.files?.[0], target);
+const clearUpload = (target: "slider" | "content") => {
+    if (target === "slider") sliderForm.value.image_url = "";
+    else contentForm.value.image_url = "";
+    imageUploadError.value = "";
+};
+const resetContentForm = () => {
+    contentForm.value = {
+        title: "",
+        slug: "",
+        subtitle: "",
+        description: "",
+        image_url: "",
+        external_url: "",
+        sort_order: 0,
+        is_active: true,
+        metadata: {
+            secondary_text: "",
+            year: "",
+            genre: "",
+            music_genre: "",
+            youtube_url: "",
+            date: "",
+            duration: "",
+            link_enabled: false,
+        },
+    };
+    contentError.value = "";
+};
+const loadContentForm = async () => {
+    resetContentForm();
+    if (route.name !== "content-edit") return;
+    adminLoading.value = true;
+    try {
+        const payload: any = await apiRequest(
+            `/admin/${moduleType()}/${route.params.id}`,
+            {},
+            true,
+        );
+        const x = payload.data;
+        contentForm.value = {
+            title: x.title || "",
+            slug: x.slug || "",
+            subtitle: x.subtitle || "",
+            description: x.description || "",
+            image_url: x.image_url || "",
+            external_url: x.external_url || "",
+            sort_order: x.sort_order ?? 0,
+            is_active: Boolean(x.is_active),
+            metadata: {
+                secondary_text: x.metadata?.secondary_text || "",
+                year: x.metadata?.year || "",
+                genre: x.metadata?.genre || "",
+                music_genre: x.metadata?.music_genre || "",
+                youtube_url: x.metadata?.youtube_url || "",
+                date: x.metadata?.date || "",
+                duration: x.metadata?.duration || "",
+                link_enabled: Boolean(x.metadata?.link_enabled),
+            },
+        };
+    } catch (e: any) {
+        contentError.value = e.message || "Gagal memuat data.";
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const saveContent = async () => {
+    contentError.value = "";
+    if (!contentForm.value.title.trim()) {
+        contentError.value = "Judul wajib diisi.";
+        return;
+    }
+    contentSaving.value = true;
+    try {
+        const editing = route.name === "content-edit";
+        const generatedSlug =
+            contentForm.value.title
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/(^-|-$)/g, "") || `konten-${Date.now()}`;
+        const body = {
+            ...contentForm.value,
+            slug: contentForm.value.slug.trim() || generatedSlug,
+            metadata: Object.fromEntries(
+                Object.entries(contentForm.value.metadata).filter(
+                    ([, v]) => v !== "",
+                ),
+            ),
+        };
+        await apiRequest(
+            `/admin/${moduleType()}${editing ? `/${route.params.id}` : ""}`,
+            { method: editing ? "PUT" : "POST", body: JSON.stringify(body) },
+            true,
+        );
+        flash(
+            editing
+                ? "Data berhasil diperbarui."
+                : "Data baru berhasil ditambahkan.",
+        );
+        await router.push(`/nadiku/${currentModule.value}`);
+    } catch (e: any) {
+        contentError.value = e.message || "Data gagal disimpan.";
+    } finally {
+        contentSaving.value = false;
+    }
+};
+const addRow = async () => {
+    const type = moduleType();
+    if (type === "slider") {
+        await router.push("/nadiku/slider/tambah");
+        return;
+    }
+    if (
+        [
+            "banner",
+            "about",
+            "release",
+            "artist",
+            "news",
+            "photo",
+            "video",
+        ].includes(type)
+    ) {
+        await router.push(`/nadiku/${currentModule.value}/tambah`);
+        return;
+    }
+    if (["settings", "activity"].includes(type)) {
+        flash(
+            type === "activity"
+                ? "Activity Log hanya dapat dibaca."
+                : "Gunakan tombol edit untuk mengubah pengaturan.",
+        );
+        return;
+    }
+};
+const editRow = async (row: any) => {
+    const type = moduleType();
+    if (type === "slider") {
+        await router.push(`/nadiku/slider/${row.id}/edit`);
+        return;
+    }
+    if (
+        [
+            "banner",
+            "about",
+            "release",
+            "artist",
+            "news",
+            "photo",
+            "video",
+        ].includes(type)
+    ) {
+        await router.push(`/nadiku/${currentModule.value}/${row.id}/edit`);
+        return;
+    }
+    if (type === "activity") {
+        flash("Activity Log tidak dapat diubah.");
+        return;
+    }
+    const value = prompt(`Ubah nilai ${row.name}:`, row.sub)?.trim();
+    if (value === undefined || value === null) return;
+    await apiRequest(
+        "/admin/settings",
+        {
+            method: "PUT",
+            body: JSON.stringify({ items: { [row.name]: value } }),
+        },
+        true,
+    );
+    await loadAdminRows();
+    flash("Perubahan disimpan.");
+};
+const toggleRow = async (row: any) => {
+    const type = moduleType();
+    if (["settings", "activity"].includes(type)) return;
+    row.status = !row.status;
+    await apiRequest(
+        `/admin/${type}/${row.id}`,
+        {
+            method: "PUT",
+            body: JSON.stringify({
+                title: row.name,
+                slug: row.raw.slug,
+                is_active: row.status,
+            }),
+        },
+        true,
+    );
+    flash(row.status ? "Konten diterbitkan." : "Konten disembunyikan.");
+};
+const removeRow = async (id: number | string, name: string) => {
+    const type = moduleType();
+    if (["settings", "activity"].includes(type)) return;
+    if (confirm(`Hapus ${name}?`)) {
+        await apiRequest(`/admin/${type}/${id}`, { method: "DELETE" }, true);
+        await loadAdminRows();
+        flash("Konten dihapus.");
+    }
+};
+watch(
+    () => [route.name, route.params.id, route.params.module],
+    () => {
+        query.value = "";
+        if (route.name === "admin") loadAdminRows();
+        else if (["slider-create", "slider-edit"].includes(String(route.name)))
+            loadSliderForm();
+        else if (
+            ["content-create", "content-edit"].includes(String(route.name))
+        )
+            loadContentForm();
+        else if (route.name !== "login") loadAllPublicContent();
+    },
+);
 </script>
 
 <template>
-  <div v-if="route.name==='login'" class="login vue-login">
-    <div class="login-brand"><RouterLink to="/" class="logo logo-dark"><span><Music2 :size="20"/></span><div><b>13 NADI</b><small>RECORDS</small></div></RouterLink><div><span class="eyebrow">CONTENT MANAGEMENT SYSTEM</span><h1>Kelola cerita di balik setiap nada.</h1><p>Satu ruang untuk rilisan, artis, galeri, dan identitas 13 Nadi.</p></div></div>
-    <form @submit.prevent="login"><h2>Selamat datang</h2><p>Masuk ke dashboard Nadiku dengan akun administrator.</p><label>Username<input v-model.trim="username" required name="username" autocomplete="username" placeholder="Masukkan username"/></label><label>Password<input v-model="password" required name="password" autocomplete="current-password" type="password" placeholder="Masukkan password"/></label><p v-if="authError" class="login-error" role="alert">{{authError}}</p><button class="button" :disabled="authLoading">{{authLoading?'Memeriksa...':'Masuk ke Dashboard'}} <ArrowRight :size="18"/></button><small>Gunakan akun administrator yang terdaftar.</small></form>
-  </div>
+    <div v-if="route.name === 'login'" class="login vue-login">
+        <div class="login-brand">
+            <RouterLink to="/" class="logo logo-dark"
+                ><span><Music2 :size="20" /></span>
+                <div><b>13 NADI</b><small>RECORDS</small></div></RouterLink
+            >
+            <div>
+                <span class="eyebrow">CONTENT MANAGEMENT SYSTEM</span>
+                <h1>Kelola cerita di balik setiap nada.</h1>
+                <p>
+                    Satu ruang untuk rilisan, artis, galeri, dan identitas 13
+                    Nadi.
+                </p>
+            </div>
+        </div>
+        <form @submit.prevent="login">
+            <h2>Selamat datang</h2>
+            <p>Masuk ke dashboard Nadiku dengan akun administrator.</p>
+            <label
+                >Username<input
+                    v-model.trim="username"
+                    required
+                    name="username"
+                    autocomplete="username"
+                    placeholder="Masukkan username" /></label
+            ><label
+                >Password<input
+                    v-model="password"
+                    required
+                    name="password"
+                    autocomplete="current-password"
+                    type="password"
+                    placeholder="Masukkan password"
+            /></label>
+            <p v-if="authError" class="login-error" role="alert">
+                {{ authError }}
+            </p>
+            <button class="button" :disabled="authLoading">
+                {{ authLoading ? "Memeriksa..." : "Masuk ke Dashboard" }}
+                <ArrowRight :size="18" /></button
+            ><small>Gunakan akun administrator yang terdaftar.</small>
+        </form>
+    </div>
 
-  <div v-else-if="['admin','slider-create','slider-edit','content-create','content-edit'].includes(String(route.name))" class="admin vue-admin">
-    <aside :class="{ 'side-open':sideOpen }"><div class="side-head"><RouterLink to="/" class="logo logo-dark"><span><Music2 :size="20"/></span><div><b>13 NADI</b><small>RECORDS</small></div></RouterLink><button @click="sideOpen=false"><X/></button></div><nav><RouterLink v-for="([label,path,Icon]) in modules" :key="path" :to="`/nadiku${path?'/'+path:''}`" :class="{active:currentModule===path}" @click="sideOpen=false"><component :is="Icon" :size="19"/>{{label}}</RouterLink></nav><button class="logout" @click="logout"><LogOut :size="18"/>Keluar</button></aside>
-    <div class="admin-main"><header><button class="side-toggle" @click="sideOpen=true"><Menu/></button><div><small>NADIKU CMS · VUE 3</small><h1>{{currentTitle}}</h1></div><div class="profile"><span>NA</span><div><b>Nadiku Admin</b><small>Administrator</small></div></div></header>
-      <div v-if="['slider-create','slider-edit'].includes(String(route.name))" class="admin-content slider-editor"><div class="editor-heading"><div><RouterLink to="/nadiku/slider"><ChevronLeft :size="17"/> Kembali ke Slider Hero</RouterLink><h2>{{route.name==='slider-edit'?'Edit Slider Hero':'Tambahkan Slider Baru'}}</h2><p>Atur konten, gambar, tautan, urutan, dan status slider pada halaman depan.</p></div><button class="button" type="button" :disabled="sliderSaving||adminLoading" @click="saveSlider">{{sliderSaving?'Menyimpan...':'Simpan Slider'}}</button></div><div v-if="adminLoading" class="editor-card empty"><Activity/><h3>Memuat slider...</h3></div><form v-else class="editor-layout" @submit.prevent="saveSlider"><div class="editor-card"><h3>Informasi Slider</h3><div class="form-grid"><label class="field field-full"><span>Judul Slider *</span><input v-model="sliderForm.title" required maxlength="160" placeholder="Contoh: Nada yang Menghubungkan Cerita"/></label><label class="field"><span>Teks Tombol / Subjudul</span><input v-model="sliderForm.subtitle" maxlength="255" placeholder="Dengarkan Sekarang"/></label><label class="field"><span>Urutan Tampil</span><input v-model.number="sliderForm.sort_order" type="number" min="0"/></label><label class="field field-full"><span>Deskripsi</span><textarea v-model="sliderForm.description" rows="6" placeholder="Tuliskan deskripsi singkat slider..."></textarea></label><div class="field field-full"><span>Upload Gambar</span><label class="image-upload" :class="{filled:sliderForm.image_url,loading:imageUploading==='slider'}" @dragover.prevent @drop.prevent="dropUpload($event,'slider')"><input type="file" accept="image/jpeg,image/png,image/webp" @change="pickUpload($event,'slider')"/><img v-if="sliderForm.image_url" :src="sliderForm.image_url" alt="Gambar slider terpilih"/><span v-else class="upload-icon"><ImageUp/></span><span class="upload-copy"><b>{{imageUploading==='slider'?'Mengunggah gambar...':sliderForm.image_url?'Ganti gambar slider':'Tarik gambar ke sini atau klik untuk memilih'}}</b><small>JPG, PNG, atau WebP · maksimal 8 MB</small></span><span v-if="sliderForm.image_url" class="upload-success"><CheckCircle2/> Siap digunakan</span></label><button v-if="sliderForm.image_url" class="remove-image" type="button" @click="clearUpload('slider')"><Trash2/> Hapus gambar</button></div><p v-if="imageUploadError" class="form-error field-full">{{imageUploadError}}</p><label class="field field-full"><span>URL Tujuan Tombol</span><input v-model="sliderForm.external_url" type="url" placeholder="https://..."/></label><label class="check-field field-full"><input v-model="sliderForm.is_active" type="checkbox"/><span><b>Publikasikan slider</b><small>Slider aktif akan tampil di halaman depan.</small></span></label></div><p v-if="sliderError" class="form-error">{{sliderError}}</p><div class="editor-actions"><RouterLink class="cancel-button" to="/nadiku/slider">Batal</RouterLink><button class="button" type="submit" :disabled="sliderSaving">{{sliderSaving?'Menyimpan...':'Simpan Slider'}}</button></div></div><aside class="editor-preview"><span>PREVIEW GAMBAR</span><div><img v-if="sliderForm.image_url" :src="sliderForm.image_url" alt="Preview slider"/><div v-else class="preview-empty"><Image/><small>Upload gambar untuk melihat preview</small></div><div class="preview-shade"></div><section><small>{{sliderForm.subtitle||'SLIDER HERO'}}</small><h3>{{sliderForm.title||'Judul slider akan tampil di sini'}}</h3><p>{{sliderForm.description||'Deskripsi slider akan tampil di area ini.'}}</p></section></div></aside></form></div>
-      <div v-else-if="['content-create','content-edit'].includes(String(route.name))" class="admin-content slider-editor"><div class="editor-heading"><div><RouterLink :to="`/nadiku/${currentModule}`"><ChevronLeft :size="17"/> Kembali ke {{modules.find(x=>x[1]===currentModule)?.[0]}}</RouterLink><h2>{{route.name==='content-edit'?'Edit':'Tambahkan'}} {{modules.find(x=>x[1]===currentModule)?.[0]}}</h2><p>Lengkapi data di bawah. Perubahan tersimpan ke database dan diterapkan pada halaman publik.</p></div><button class="button" type="button" :disabled="contentSaving||adminLoading" @click="saveContent">{{contentSaving?'Menyimpan...':'Simpan Data'}}</button></div><div v-if="adminLoading" class="editor-card empty"><Activity/><h3>Memuat data...</h3></div><form v-else class="editor-layout" @submit.prevent="saveContent"><div class="editor-card"><h3>Informasi {{modules.find(x=>x[1]===currentModule)?.[0]}}</h3><div class="form-grid"><label class="field field-full"><span>Judul *</span><input v-model="contentForm.title" required maxlength="160" placeholder="Masukkan judul"/></label><label class="field"><span>Slug URL</span><input v-model="contentForm.slug" maxlength="180" placeholder="Terisi otomatis jika dikosongkan"/></label><label class="field"><span>Urutan Tampil</span><input v-model.number="contentForm.sort_order" type="number" min="0"/></label><label class="field field-full"><span>{{currentModule==='rilisan'?'Nama Artis':currentModule==='artis'?'Jenis / Peran Artis':currentModule==='berita'?'Kategori Berita':'Subjudul'}}</span><input v-model="contentForm.subtitle" maxlength="255"/></label><label class="field field-full"><span>Deskripsi</span><textarea v-model="contentForm.description" rows="7" placeholder="Masukkan deskripsi konten"></textarea></label><label v-if="currentModule==='tentang'" class="field field-full"><span>Paragraf Kedua</span><textarea v-model="contentForm.metadata.secondary_text" rows="7"></textarea></label><label v-if="currentModule==='rilisan'" class="field"><span>Jenis Rilisan</span><select v-model="contentForm.metadata.genre"><option value="">Pilih jenis rilisan</option><option>Single</option><option>EP</option><option>Album</option><option>Live Album</option><option>Compilation</option></select></label><label v-if="currentModule==='rilisan'" class="field"><span>Tahun</span><input v-model="contentForm.metadata.year" inputmode="numeric" maxlength="4" placeholder="2026"/></label><label v-if="currentModule==='rilisan'" class="field field-full"><span>Genre Musik</span><select v-model="contentForm.metadata.music_genre"><option value="">Pilih genre musik</option><option v-for="genre in releaseGenres" :key="genre" :value="genre">{{genre}}</option></select><small>Pilih genre utama yang paling menggambarkan rilisan ini.</small></label><label v-if="currentModule==='berita'" class="field"><span>Tanggal</span><input v-model="contentForm.metadata.date" placeholder="23 Agustus 2026"/></label><label v-if="currentModule==='video'" class="field"><span>Durasi</span><input v-model="contentForm.metadata.duration" placeholder="04:28"/></label><div class="field field-full"><span>Upload Gambar</span><label class="image-upload" :class="{filled:contentForm.image_url,loading:imageUploading==='content'}" @dragover.prevent @drop.prevent="dropUpload($event,'content')"><input type="file" accept="image/jpeg,image/png,image/webp" @change="pickUpload($event,'content')"/><img v-if="contentForm.image_url" :src="contentForm.image_url" alt="Gambar konten terpilih"/><span v-else class="upload-icon"><ImageUp/></span><span class="upload-copy"><b>{{imageUploading==='content'?'Mengunggah gambar...':contentForm.image_url?'Ganti gambar konten':'Tarik gambar ke sini atau klik untuk memilih'}}</b><small>JPG, PNG, atau WebP · maksimal 8 MB</small></span><span v-if="contentForm.image_url" class="upload-success"><CheckCircle2/> Siap digunakan</span></label><button v-if="contentForm.image_url" class="remove-image" type="button" @click="clearUpload('content')"><Trash2/> Hapus gambar</button></div><p v-if="imageUploadError" class="form-error field-full">{{imageUploadError}}</p><label v-if="['rilisan','artis','berita','video'].includes(currentModule)" class="field field-full"><span>{{currentModule==='rilisan'?'Link Spotify':'URL Tujuan / Media'}}</span><input v-model="contentForm.external_url" type="url" :placeholder="currentModule==='rilisan'?'https://open.spotify.com/track/...':'https://...'"/></label><label v-if="currentModule==='rilisan'" class="field field-full"><span>Link Video YouTube</span><input v-model="contentForm.metadata.youtube_url" type="url" placeholder="https://www.youtube.com/watch?v=..."/><small>Mendukung link YouTube biasa, youtu.be, dan Shorts. Video akan tampil pada detail rilisan.</small></label><label class="check-field field-full"><input v-model="contentForm.is_active" type="checkbox"/><span><b>Publikasikan data</b><small>Data aktif akan tersedia pada halaman publik.</small></span></label></div><p v-if="contentError" class="form-error">{{contentError}}</p><div class="editor-actions"><RouterLink class="cancel-button" :to="`/nadiku/${currentModule}`">Batal</RouterLink><button class="button" type="submit" :disabled="contentSaving">{{contentSaving?'Menyimpan...':'Simpan Data'}}</button></div></div><aside class="editor-preview"><span>PREVIEW KONTEN</span><div><img v-if="contentForm.image_url" :src="contentForm.image_url" alt="Preview konten"/><div v-else class="preview-empty"><Image/><small>Upload gambar untuk melihat preview</small></div><div class="preview-shade"></div><section><small>{{contentForm.subtitle||modules.find(x=>x[1]===currentModule)?.[0]}}</small><h3>{{contentForm.title||'Judul akan tampil di sini'}}</h3><p>{{contentForm.description||'Deskripsi akan tampil di area ini.'}}</p></section></div></aside></form></div>
-      <div v-else-if="!currentModule" class="admin-content"><div class="welcome"><div><span>Sabtu, 22 Agustus 2026</span><h2>Selamat datang kembali 👋</h2><p>Berikut ringkasan konten 13 Nadi hari ini.</p></div><RouterLink to="/">Lihat Website <ExternalLink :size="16"/></RouterLink></div><div class="stats"><div v-for="([Icon,n,l]) in [[Music2,'12','Rilisan'],[Users,'8','Artis'],[Image,'24','Foto'],[Eye,'1.284','Pengunjung']]" :key="l"><span><component :is="Icon"/></span><div><b>{{n}}</b><small>{{l}}</small></div></div></div><div class="admin-grid"><div class="panel"><h3>Konten Terbaru <RouterLink to="/nadiku/rilisan">Kelola</RouterLink></h3><div v-for="r in releases.slice(0,3)" :key="r.slug" class="content-row"><img :src="r.image"/><div><b>{{r.title}}</b><small>{{r.artist}}</small></div><span class="status">Aktif</span></div></div><div class="panel"><h3>Aktivitas Terakhir</h3><div v-for="(x,i) in ['Rilisan diperbarui','Foto baru ditambahkan','Profil artis diterbitkan','SEO diperbarui']" :key="x" class="activity"><span/><div><b>{{x}}</b><small>{{i+1}} jam lalu · Admin</small></div></div></div></div></div>
-      <div v-else-if="currentModule==='program'" class="admin-content program-editor"><div class="editor-heading"><div><span class="eyebrow">KONTEN HALAMAN DEPAN</span><h2>Slide Program</h2><p>Edit empat program yang tampil bergantian pada slider program halaman depan.</p></div><button class="button" :disabled="programSaving||adminLoading" @click="saveProgramEditor">{{programSaving?'Menyimpan...':'Simpan Slide Program'}}</button></div><div v-if="adminLoading" class="editor-card empty"><Activity/><h3>Memuat Slide Program...</h3></div><form v-else class="program-editor-grid" @submit.prevent="saveProgramEditor"><section v-for="(item,i) in programSlides" :key="item.slug" class="editor-card program-edit-card"><div class="program-card-title"><span>PROGRAM 0{{i+1}}</span><component :is="item.icon"/><h3>{{item.title}}</h3></div><div class="form-grid"><label class="field field-full"><span>Judul Program</span><input v-model="item.title" required/></label><label class="field field-full"><span>Deskripsi</span><textarea v-model="item.text" rows="4"></textarea></label><label class="field field-full"><span>Tautan Tujuan</span><input v-model="item.link" placeholder="#rilisan"/></label></div></section><p v-if="programError" class="form-error">{{programError}}</p><div class="editor-actions"><RouterLink class="cancel-button" to="/">Lihat Halaman Depan</RouterLink><button class="button" :disabled="programSaving" type="submit">{{programSaving?'Menyimpan...':'Simpan Slide Program'}}</button></div></form></div>
-      <div v-else-if="currentModule==='informasi'" class="admin-content info-editor"><div class="editor-heading"><div><span class="eyebrow">KONTEN HALAMAN DEPAN</span><h2>Informasi Lain</h2><p>Edit bagian Ekosistem Kreatif dan tiga kartu layanan pada halaman depan.</p></div><button class="button" :disabled="infoSaving||adminLoading" @click="saveInfoEditor">{{infoSaving?'Menyimpan...':'Simpan Perubahan'}}</button></div><div v-if="adminLoading" class="editor-card empty"><Activity/><h3>Memuat informasi...</h3></div><form v-else class="info-editor-form" @submit.prevent="saveInfoEditor"><section class="editor-card"><h3>Judul Bagian</h3><div class="form-grid"><label class="field"><span>Label Kecil</span><input v-model="infoHeading.label"/></label><label class="field field-full"><span>Judul Utama</span><input v-model="infoHeading.title" required/></label><label class="field field-full"><span>Deskripsi Pembuka</span><textarea v-model="infoHeading.description" rows="3"></textarea></label></div></section><section v-for="(service,i) in infoServices" :key="service.slug" class="editor-card info-service-card"><div class="info-card-heading"><span>0{{i+1}}</span><component :is="[Disc3,Music2,Activity][i%3]"/><h3>Kartu Layanan {{i+1}}</h3></div><div class="form-grid"><label class="field field-full"><span>Judul</span><input v-model="service.title" required/></label><label class="field field-full"><span>Deskripsi</span><textarea v-model="service.description" rows="4"></textarea></label><label class="field"><span>Teks Tombol</span><input v-model="service.button"/></label><label class="field"><span>Tautan Tombol</span><input v-model="service.metadata.link" placeholder="#artis"/></label></div></section><p v-if="infoError" class="form-error">{{infoError}}</p><div class="editor-actions"><RouterLink class="cancel-button" to="/">Lihat Halaman Depan</RouterLink><button class="button" :disabled="infoSaving" type="submit">{{infoSaving?'Menyimpan...':'Simpan Perubahan'}}</button></div></form></div>
-      <div v-else class="admin-content"><div class="page-actions"><p>Kelola data {{currentTitle.toLowerCase()}}, urutan tampil, dan status publikasi.</p><button class="button" :disabled="adminLoading" @click="addRow"><Plus :size="17"/>Tambah {{currentTitle}}</button></div><div class="toolbar"><div><Search :size="18"/><input v-model="query" placeholder="Cari data..."/></div><select><option>Semua status</option><option>Aktif</option><option>Draft</option></select></div><div class="table-wrap"><div v-if="adminLoading" class="empty"><Activity/><h3>Memuat data...</h3></div><table v-else-if="filtered.length"><thead><tr><th>Urutan</th><th>Konten</th><th>Status</th><th>Diperbarui</th><th>Aksi</th></tr></thead><tbody><tr v-for="r in filtered" :key="r.id"><td><GripVertical :size="18"/></td><td><div class="content-row"><img v-if="r.image" :src="r.image" alt=""/><div><b>{{r.name}}</b><small>{{r.sub}}</small></div></div></td><td><button class="toggle" :class="{on:r.status}" :disabled="['settings','activity'].includes(moduleType())" @click="toggleRow(r)"><i/></button></td><td>{{r.raw.updated_at?new Date(r.raw.updated_at).toLocaleDateString('id-ID'):'—'}}</td><td><div class="row-actions"><button @click="router.push('/')"><Eye/></button><button @click="editRow(r)"><Pencil/></button><button class="danger" :disabled="['settings','activity'].includes(moduleType())" @click="removeRow(r.id,r.name)"><Trash2/></button></div></td></tr></tbody></table><div v-else class="empty"><Search/><h3>Data tidak ditemukan</h3><p>Belum ada data atau coba kata kunci lain.</p></div></div><div class="pagination"><span>Menampilkan {{filtered.length}} data</span><div><button disabled>‹</button><button class="active">1</button><button disabled>›</button></div></div></div>
-    </div><div v-if="toast" class="toast">✓ {{toast}}</div>
-  </div>
+    <div
+        v-else-if="
+            [
+                'admin',
+                'slider-create',
+                'slider-edit',
+                'content-create',
+                'content-edit',
+            ].includes(String(route.name))
+        "
+        class="admin vue-admin"
+    >
+        <aside :class="{ 'side-open': sideOpen }">
+            <div class="side-head">
+                <RouterLink to="/" class="logo logo-dark"
+                    ><span><Music2 :size="20" /></span>
+                    <div><b>13 NADI</b><small>RECORDS</small></div></RouterLink
+                ><button @click="sideOpen = false"><X /></button>
+            </div>
+            <nav>
+                <RouterLink
+                    v-for="[label, path, Icon] in modules"
+                    :key="path"
+                    :to="`/nadiku${path ? '/' + path : ''}`"
+                    :class="{ active: currentModule === path }"
+                    @click="sideOpen = false"
+                    ><component :is="Icon" :size="19" />{{ label }}</RouterLink
+                >
+            </nav>
+            <button class="logout" @click="logout">
+                <LogOut :size="18" />Keluar
+            </button>
+        </aside>
+        <div class="admin-main">
+            <header>
+                <button class="side-toggle" @click="sideOpen = true">
+                    <Menu />
+                </button>
+                <div>
+                    <small>NADIKU CMS · VUE 3</small>
+                    <h1>{{ currentTitle }}</h1>
+                </div>
+                <div class="profile">
+                    <span>NA</span>
+                    <div><b>Nadiku Admin</b><small>Administrator</small></div>
+                </div>
+            </header>
+            <div
+                v-if="
+                    ['slider-create', 'slider-edit'].includes(
+                        String(route.name),
+                    )
+                "
+                class="admin-content slider-editor"
+            >
+                <div class="editor-heading">
+                    <div>
+                        <RouterLink to="/nadiku/slider"
+                            ><ChevronLeft :size="17" /> Kembali ke Slider
+                            Hero</RouterLink
+                        >
+                        <h2>
+                            {{
+                                route.name === "slider-edit"
+                                    ? "Edit Slider Hero"
+                                    : "Tambahkan Slider Baru"
+                            }}
+                        </h2>
+                        <p>
+                            Atur konten, gambar, tautan, urutan, dan status
+                            slider pada halaman depan.
+                        </p>
+                    </div>
+                    <button
+                        class="button"
+                        type="button"
+                        :disabled="sliderSaving || adminLoading"
+                        @click="saveSlider"
+                    >
+                        {{ sliderSaving ? "Menyimpan..." : "Simpan Slider" }}
+                    </button>
+                </div>
+                <div v-if="adminLoading" class="editor-card empty">
+                    <Activity />
+                    <h3>Memuat slider...</h3>
+                </div>
+                <form v-else class="editor-layout" @submit.prevent="saveSlider">
+                    <div class="editor-card">
+                        <h3>Informasi Slider</h3>
+                        <div class="form-grid">
+                            <label class="field field-full"
+                                ><span>Judul Slider *</span
+                                ><input
+                                    v-model="sliderForm.title"
+                                    required
+                                    maxlength="160"
+                                    placeholder="Contoh: Nada yang Menghubungkan Cerita" /></label
+                            ><label class="field"
+                                ><span>Teks Tombol / Subjudul</span
+                                ><input
+                                    v-model="sliderForm.subtitle"
+                                    maxlength="255"
+                                    placeholder="Dengarkan Sekarang" /></label
+                            ><label class="field"
+                                ><span>Urutan Tampil</span
+                                ><input
+                                    v-model.number="sliderForm.sort_order"
+                                    type="number"
+                                    min="0" /></label
+                            ><label class="field field-full"
+                                ><span>Deskripsi</span
+                                ><textarea
+                                    v-model="sliderForm.description"
+                                    rows="6"
+                                    placeholder="Tuliskan deskripsi singkat slider..."
+                                ></textarea>
+                            </label>
+                            <div class="field field-full">
+                                <span>Upload Gambar</span
+                                ><label
+                                    class="image-upload"
+                                    :class="{
+                                        filled: sliderForm.image_url,
+                                        loading: imageUploading === 'slider',
+                                    }"
+                                    @dragover.prevent
+                                    @drop.prevent="dropUpload($event, 'slider')"
+                                    ><input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        @change="pickUpload($event, 'slider')"
+                                    /><img
+                                        v-if="sliderForm.image_url"
+                                        :src="sliderForm.image_url"
+                                        alt="Gambar slider terpilih"
+                                    /><span v-else class="upload-icon"
+                                        ><ImageUp /></span
+                                    ><span class="upload-copy"
+                                        ><b>{{
+                                            imageUploading === "slider"
+                                                ? "Mengunggah gambar..."
+                                                : sliderForm.image_url
+                                                  ? "Ganti gambar slider"
+                                                  : "Tarik gambar ke sini atau klik untuk memilih"
+                                        }}</b
+                                        ><small
+                                            >JPG, PNG, atau WebP · maksimal 8
+                                            MB</small
+                                        ></span
+                                    ><span
+                                        v-if="sliderForm.image_url"
+                                        class="upload-success"
+                                        ><CheckCircle2 /> Siap digunakan</span
+                                    ></label
+                                ><button
+                                    v-if="sliderForm.image_url"
+                                    class="remove-image"
+                                    type="button"
+                                    @click="clearUpload('slider')"
+                                >
+                                    <Trash2 /> Hapus gambar
+                                </button>
+                            </div>
+                            <p
+                                v-if="imageUploadError"
+                                class="form-error field-full"
+                            >
+                                {{ imageUploadError }}
+                            </p>
+                            <label
+                                v-if="currentModule === 'banner'"
+                                class="field field-full"
+                            >
+                                <span>Link Tujuan Banner</span>
+                                <input
+                                    v-model="contentForm.external_url"
+                                    type="url"
+                                    placeholder="https://..."
+                                />
+                                <small
+                                    >Pengunjung diarahkan ke alamat ini saat
+                                    banner diklik.</small
+                                >
+                            </label>
+                            <label
+                                v-if="currentModule === 'banner'"
+                                class="check-field field-full"
+                            >
+                                <input
+                                    v-model="contentForm.metadata.link_enabled"
+                                    type="checkbox"
+                                />
+                                <span
+                                    ><b>Aktifkan link banner</b
+                                    ><small
+                                        >Jika nonaktif, gambar tetap tampil
+                                        tetapi tidak dapat diklik.</small
+                                    ></span
+                                >
+                            </label>
+                            <label class="field field-full"
+                                ><span>URL Tujuan Tombol</span
+                                ><input
+                                    v-model="sliderForm.external_url"
+                                    type="url"
+                                    placeholder="https://..." /></label
+                            ><label class="check-field field-full"
+                                ><input
+                                    v-model="sliderForm.is_active"
+                                    type="checkbox"
+                                /><span
+                                    ><b>Publikasikan slider</b
+                                    ><small
+                                        >Slider aktif akan tampil di halaman
+                                        depan.</small
+                                    ></span
+                                ></label
+                            >
+                        </div>
+                        <p v-if="sliderError" class="form-error">
+                            {{ sliderError }}
+                        </p>
+                        <div class="editor-actions">
+                            <RouterLink
+                                class="cancel-button"
+                                to="/nadiku/slider"
+                                >Batal</RouterLink
+                            ><button
+                                class="button"
+                                type="submit"
+                                :disabled="sliderSaving"
+                            >
+                                {{
+                                    sliderSaving
+                                        ? "Menyimpan..."
+                                        : "Simpan Slider"
+                                }}
+                            </button>
+                        </div>
+                    </div>
+                    <aside class="editor-preview">
+                        <span>PREVIEW GAMBAR</span>
+                        <div>
+                            <img
+                                v-if="sliderForm.image_url"
+                                :src="sliderForm.image_url"
+                                alt="Preview slider"
+                            />
+                            <div v-else class="preview-empty">
+                                <Image /><small
+                                    >Upload gambar untuk melihat preview</small
+                                >
+                            </div>
+                            <div class="preview-shade"></div>
+                            <section>
+                                <small>{{
+                                    sliderForm.subtitle || "SLIDER HERO"
+                                }}</small>
+                                <h3>
+                                    {{
+                                        sliderForm.title ||
+                                        "Judul slider akan tampil di sini"
+                                    }}
+                                </h3>
+                                <p>
+                                    {{
+                                        sliderForm.description ||
+                                        "Deskripsi slider akan tampil di area ini."
+                                    }}
+                                </p>
+                            </section>
+                        </div>
+                    </aside>
+                </form>
+            </div>
+            <div
+                v-else-if="
+                    ['content-create', 'content-edit'].includes(
+                        String(route.name),
+                    )
+                "
+                class="admin-content slider-editor"
+            >
+                <div class="editor-heading">
+                    <div>
+                        <RouterLink :to="`/nadiku/${currentModule}`"
+                            ><ChevronLeft :size="17" /> Kembali ke
+                            {{
+                                modules.find((x) => x[1] === currentModule)?.[0]
+                            }}</RouterLink
+                        >
+                        <h2>
+                            {{
+                                route.name === "content-edit"
+                                    ? "Edit"
+                                    : "Tambahkan"
+                            }}
+                            {{
+                                modules.find((x) => x[1] === currentModule)?.[0]
+                            }}
+                        </h2>
+                        <p>
+                            Lengkapi data di bawah. Perubahan tersimpan ke
+                            database dan diterapkan pada halaman publik.
+                        </p>
+                    </div>
+                    <button
+                        class="button"
+                        type="button"
+                        :disabled="contentSaving || adminLoading"
+                        @click="saveContent"
+                    >
+                        {{ contentSaving ? "Menyimpan..." : "Simpan Data" }}
+                    </button>
+                </div>
+                <div v-if="adminLoading" class="editor-card empty">
+                    <Activity />
+                    <h3>Memuat data...</h3>
+                </div>
+                <form
+                    v-else
+                    class="editor-layout"
+                    @submit.prevent="saveContent"
+                >
+                    <div class="editor-card">
+                        <h3>
+                            Informasi
+                            {{
+                                modules.find((x) => x[1] === currentModule)?.[0]
+                            }}
+                        </h3>
+                        <div class="form-grid">
+                            <label class="field field-full"
+                                ><span>Judul *</span
+                                ><input
+                                    v-model="contentForm.title"
+                                    required
+                                    maxlength="160"
+                                    placeholder="Masukkan judul" /></label
+                            ><label class="field"
+                                ><span>Slug URL</span
+                                ><input
+                                    v-model="contentForm.slug"
+                                    maxlength="180"
+                                    placeholder="Terisi otomatis jika dikosongkan" /></label
+                            ><label class="field"
+                                ><span>Urutan Tampil</span
+                                ><input
+                                    v-model.number="contentForm.sort_order"
+                                    type="number"
+                                    min="0" /></label
+                            ><label class="field field-full"
+                                ><span>{{
+                                    currentModule === "rilisan"
+                                        ? "Nama Artis"
+                                        : currentModule === "artis"
+                                          ? "Jenis / Peran Artis"
+                                          : currentModule === "berita"
+                                            ? "Kategori Berita"
+                                            : "Subjudul"
+                                }}</span
+                                ><input
+                                    v-model="contentForm.subtitle"
+                                    maxlength="255" /></label
+                            ><label class="field field-full"
+                                ><span>Deskripsi</span
+                                ><textarea
+                                    v-model="contentForm.description"
+                                    rows="7"
+                                    placeholder="Masukkan deskripsi konten"
+                                ></textarea></label
+                            ><label
+                                v-if="currentModule === 'tentang'"
+                                class="field field-full"
+                                ><span>Paragraf Kedua</span
+                                ><textarea
+                                    v-model="
+                                        contentForm.metadata.secondary_text
+                                    "
+                                    rows="7"
+                                ></textarea></label
+                            ><label
+                                v-if="currentModule === 'rilisan'"
+                                class="field"
+                                ><span>Jenis Rilisan</span
+                                ><select v-model="contentForm.metadata.genre">
+                                    <option value="">
+                                        Pilih jenis rilisan
+                                    </option>
+                                    <option>Single</option>
+                                    <option>EP</option>
+                                    <option>Album</option>
+                                    <option>Live Album</option>
+                                    <option>Compilation</option>
+                                </select></label
+                            ><label
+                                v-if="currentModule === 'rilisan'"
+                                class="field"
+                                ><span>Tahun</span
+                                ><input
+                                    v-model="contentForm.metadata.year"
+                                    inputmode="numeric"
+                                    maxlength="4"
+                                    placeholder="2026" /></label
+                            ><label
+                                v-if="currentModule === 'rilisan'"
+                                class="field field-full"
+                                ><span>Genre Musik</span
+                                ><select
+                                    v-model="contentForm.metadata.music_genre"
+                                >
+                                    <option value="">Pilih genre musik</option>
+                                    <option
+                                        v-for="genre in releaseGenres"
+                                        :key="genre"
+                                        :value="genre"
+                                    >
+                                        {{ genre }}
+                                    </option></select
+                                ><small
+                                    >Pilih genre utama yang paling menggambarkan
+                                    rilisan ini.</small
+                                ></label
+                            ><label
+                                v-if="currentModule === 'berita'"
+                                class="field"
+                                ><span>Tanggal</span
+                                ><input
+                                    v-model="contentForm.metadata.date"
+                                    placeholder="23 Agustus 2026" /></label
+                            ><label
+                                v-if="currentModule === 'video'"
+                                class="field"
+                                ><span>Durasi</span
+                                ><input
+                                    v-model="contentForm.metadata.duration"
+                                    placeholder="04:28"
+                            /></label>
+                            <div class="field field-full">
+                                <span>Upload Gambar</span
+                                ><label
+                                    class="image-upload"
+                                    :class="{
+                                        filled: contentForm.image_url,
+                                        loading: imageUploading === 'content',
+                                    }"
+                                    @dragover.prevent
+                                    @drop.prevent="
+                                        dropUpload($event, 'content')
+                                    "
+                                    ><input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        @change="pickUpload($event, 'content')"
+                                    /><img
+                                        v-if="contentForm.image_url"
+                                        :src="contentForm.image_url"
+                                        alt="Gambar konten terpilih"
+                                    /><span v-else class="upload-icon"
+                                        ><ImageUp /></span
+                                    ><span class="upload-copy"
+                                        ><b>{{
+                                            imageUploading === "content"
+                                                ? "Mengunggah gambar..."
+                                                : contentForm.image_url
+                                                  ? "Ganti gambar konten"
+                                                  : "Tarik gambar ke sini atau klik untuk memilih"
+                                        }}</b
+                                        ><small
+                                            >JPG, PNG, atau WebP · maksimal 8
+                                            MB</small
+                                        ></span
+                                    ><span
+                                        v-if="contentForm.image_url"
+                                        class="upload-success"
+                                        ><CheckCircle2 /> Siap digunakan</span
+                                    ></label
+                                ><button
+                                    v-if="contentForm.image_url"
+                                    class="remove-image"
+                                    type="button"
+                                    @click="clearUpload('content')"
+                                >
+                                    <Trash2 /> Hapus gambar
+                                </button>
+                            </div>
+                            <p
+                                v-if="imageUploadError"
+                                class="form-error field-full"
+                            >
+                                {{ imageUploadError }}
+                            </p>
+                            <label
+                                v-if="
+                                    [
+                                        'rilisan',
+                                        'artis',
+                                        'berita',
+                                        'video',
+                                    ].includes(currentModule)
+                                "
+                                class="field field-full"
+                                ><span>{{
+                                    currentModule === "rilisan"
+                                        ? "Link Spotify"
+                                        : "URL Tujuan / Media"
+                                }}</span
+                                ><input
+                                    v-model="contentForm.external_url"
+                                    type="url"
+                                    :placeholder="
+                                        currentModule === 'rilisan'
+                                            ? 'https://open.spotify.com/track/...'
+                                            : 'https://...'
+                                    " /></label
+                            ><label
+                                v-if="currentModule === 'rilisan'"
+                                class="field field-full"
+                                ><span>Link Video YouTube</span
+                                ><input
+                                    v-model="contentForm.metadata.youtube_url"
+                                    type="url"
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                /><small
+                                    >Mendukung link YouTube biasa, youtu.be, dan
+                                    Shorts. Video akan tampil pada detail
+                                    rilisan.</small
+                                ></label
+                            ><label class="check-field field-full"
+                                ><input
+                                    v-model="contentForm.is_active"
+                                    type="checkbox"
+                                /><span
+                                    ><b>{{
+                                        currentModule === "banner"
+                                            ? "Tampilkan banner"
+                                            : "Publikasikan data"
+                                    }}</b
+                                    ><small
+                                        >Data aktif akan tersedia pada halaman
+                                        publik.</small
+                                    ></span
+                                ></label
+                            >
+                        </div>
+                        <p v-if="contentError" class="form-error">
+                            {{ contentError }}
+                        </p>
+                        <div class="editor-actions">
+                            <RouterLink
+                                class="cancel-button"
+                                :to="`/nadiku/${currentModule}`"
+                                >Batal</RouterLink
+                            ><button
+                                class="button"
+                                type="submit"
+                                :disabled="contentSaving"
+                            >
+                                {{
+                                    contentSaving
+                                        ? "Menyimpan..."
+                                        : "Simpan Data"
+                                }}
+                            </button>
+                        </div>
+                    </div>
+                    <aside class="editor-preview">
+                        <span>PREVIEW KONTEN</span>
+                        <div>
+                            <img
+                                v-if="contentForm.image_url"
+                                :src="contentForm.image_url"
+                                alt="Preview konten"
+                            />
+                            <div v-else class="preview-empty">
+                                <Image /><small
+                                    >Upload gambar untuk melihat preview</small
+                                >
+                            </div>
+                            <div class="preview-shade"></div>
+                            <section>
+                                <small>{{
+                                    contentForm.subtitle ||
+                                    modules.find(
+                                        (x) => x[1] === currentModule,
+                                    )?.[0]
+                                }}</small>
+                                <h3>
+                                    {{
+                                        contentForm.title ||
+                                        "Judul akan tampil di sini"
+                                    }}
+                                </h3>
+                                <p>
+                                    {{
+                                        contentForm.description ||
+                                        "Deskripsi akan tampil di area ini."
+                                    }}
+                                </p>
+                            </section>
+                        </div>
+                    </aside>
+                </form>
+            </div>
+            <div v-else-if="!currentModule" class="admin-content">
+                <div class="welcome">
+                    <div>
+                        <span>Sabtu, 22 Agustus 2026</span>
+                        <h2>Selamat datang kembali 👋</h2>
+                        <p>Berikut ringkasan konten 13 Nadi hari ini.</p>
+                    </div>
+                    <RouterLink to="/"
+                        >Lihat Website <ExternalLink :size="16"
+                    /></RouterLink>
+                </div>
+                <div class="stats">
+                    <div
+                        v-for="[Icon, n, l] in [
+                            [Music2, '12', 'Rilisan'],
+                            [Users, '8', 'Artis'],
+                            [Image, '24', 'Foto'],
+                            [Eye, '1.284', 'Pengunjung'],
+                        ]"
+                        :key="l"
+                    >
+                        <span><component :is="Icon" /></span>
+                        <div>
+                            <b>{{ n }}</b
+                            ><small>{{ l }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid">
+                    <div class="panel">
+                        <h3>
+                            Konten Terbaru
+                            <RouterLink to="/nadiku/rilisan">Kelola</RouterLink>
+                        </h3>
+                        <div
+                            v-for="r in releases.slice(0, 3)"
+                            :key="r.slug"
+                            class="content-row"
+                        >
+                            <img :src="r.image" />
+                            <div>
+                                <b>{{ r.title }}</b
+                                ><small>{{ r.artist }}</small>
+                            </div>
+                            <span class="status">Aktif</span>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h3>Aktivitas Terakhir</h3>
+                        <div
+                            v-for="(x, i) in [
+                                'Rilisan diperbarui',
+                                'Foto baru ditambahkan',
+                                'Profil artis diterbitkan',
+                                'SEO diperbarui',
+                            ]"
+                            :key="x"
+                            class="activity"
+                        >
+                            <span />
+                            <div>
+                                <b>{{ x }}</b
+                                ><small>{{ i + 1 }} jam lalu · Admin</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div
+                v-else-if="currentModule === 'program'"
+                class="admin-content program-editor"
+            >
+                <div class="editor-heading">
+                    <div>
+                        <span class="eyebrow">KONTEN HALAMAN DEPAN</span>
+                        <h2>Slide Program</h2>
+                        <p>
+                            Edit empat program yang tampil bergantian pada
+                            slider program halaman depan.
+                        </p>
+                    </div>
+                    <button
+                        class="button"
+                        :disabled="programSaving || adminLoading"
+                        @click="saveProgramEditor"
+                    >
+                        {{
+                            programSaving
+                                ? "Menyimpan..."
+                                : "Simpan Slide Program"
+                        }}
+                    </button>
+                </div>
+                <div v-if="adminLoading" class="editor-card empty">
+                    <Activity />
+                    <h3>Memuat Slide Program...</h3>
+                </div>
+                <form
+                    v-else
+                    class="program-editor-grid"
+                    @submit.prevent="saveProgramEditor"
+                >
+                    <section
+                        v-for="(item, i) in programSlides"
+                        :key="item.slug"
+                        class="editor-card program-edit-card"
+                    >
+                        <div class="program-card-title">
+                            <span>PROGRAM 0{{ i + 1 }}</span
+                            ><component :is="item.icon" />
+                            <h3>{{ item.title }}</h3>
+                        </div>
+                        <div class="form-grid">
+                            <label class="field field-full"
+                                ><span>Judul Program</span
+                                ><input v-model="item.title" required /></label
+                            ><label class="field field-full"
+                                ><span>Deskripsi</span
+                                ><textarea
+                                    v-model="item.text"
+                                    rows="4"
+                                ></textarea></label
+                            ><label class="field field-full"
+                                ><span>Tautan Tujuan</span
+                                ><input
+                                    v-model="item.link"
+                                    placeholder="#rilisan"
+                            /></label>
+                        </div>
+                    </section>
+                    <p v-if="programError" class="form-error">
+                        {{ programError }}
+                    </p>
+                    <div class="editor-actions">
+                        <RouterLink class="cancel-button" to="/"
+                            >Lihat Halaman Depan</RouterLink
+                        ><button
+                            class="button"
+                            :disabled="programSaving"
+                            type="submit"
+                        >
+                            {{
+                                programSaving
+                                    ? "Menyimpan..."
+                                    : "Simpan Slide Program"
+                            }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div
+                v-else-if="currentModule === 'informasi'"
+                class="admin-content info-editor"
+            >
+                <div class="editor-heading">
+                    <div>
+                        <span class="eyebrow">KONTEN HALAMAN DEPAN</span>
+                        <h2>Informasi Lain</h2>
+                        <p>
+                            Edit bagian Ekosistem Kreatif dan tiga kartu layanan
+                            pada halaman depan.
+                        </p>
+                    </div>
+                    <button
+                        class="button"
+                        :disabled="infoSaving || adminLoading"
+                        @click="saveInfoEditor"
+                    >
+                        {{ infoSaving ? "Menyimpan..." : "Simpan Perubahan" }}
+                    </button>
+                </div>
+                <div v-if="adminLoading" class="editor-card empty">
+                    <Activity />
+                    <h3>Memuat informasi...</h3>
+                </div>
+                <form
+                    v-else
+                    class="info-editor-form"
+                    @submit.prevent="saveInfoEditor"
+                >
+                    <section class="editor-card">
+                        <h3>Judul Bagian</h3>
+                        <div class="form-grid">
+                            <label class="field"
+                                ><span>Label Kecil</span
+                                ><input v-model="infoHeading.label" /></label
+                            ><label class="field field-full"
+                                ><span>Judul Utama</span
+                                ><input
+                                    v-model="infoHeading.title"
+                                    required /></label
+                            ><label class="field field-full"
+                                ><span>Deskripsi Pembuka</span
+                                ><textarea
+                                    v-model="infoHeading.description"
+                                    rows="3"
+                                ></textarea>
+                            </label>
+                        </div>
+                    </section>
+                    <section
+                        v-for="(service, i) in infoServices"
+                        :key="service.slug"
+                        class="editor-card info-service-card"
+                    >
+                        <div class="info-card-heading">
+                            <span>0{{ i + 1 }}</span
+                            ><component
+                                :is="[Disc3, Music2, Activity][i % 3]"
+                            />
+                            <h3>Kartu Layanan {{ i + 1 }}</h3>
+                        </div>
+                        <div class="form-grid">
+                            <label class="field field-full"
+                                ><span>Judul</span
+                                ><input
+                                    v-model="service.title"
+                                    required /></label
+                            ><label class="field field-full"
+                                ><span>Deskripsi</span
+                                ><textarea
+                                    v-model="service.description"
+                                    rows="4"
+                                ></textarea></label
+                            ><label class="field"
+                                ><span>Teks Tombol</span
+                                ><input v-model="service.button" /></label
+                            ><label class="field"
+                                ><span>Tautan Tombol</span
+                                ><input
+                                    v-model="service.metadata.link"
+                                    placeholder="#artis"
+                            /></label>
+                        </div>
+                    </section>
+                    <p v-if="infoError" class="form-error">{{ infoError }}</p>
+                    <div class="editor-actions">
+                        <RouterLink class="cancel-button" to="/"
+                            >Lihat Halaman Depan</RouterLink
+                        ><button
+                            class="button"
+                            :disabled="infoSaving"
+                            type="submit"
+                        >
+                            {{
+                                infoSaving ? "Menyimpan..." : "Simpan Perubahan"
+                            }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div v-else class="admin-content">
+                <div class="page-actions">
+                    <p>
+                        Kelola data {{ currentTitle.toLowerCase() }}, urutan
+                        tampil, dan status publikasi.
+                    </p>
+                    <button
+                        class="button"
+                        :disabled="adminLoading"
+                        @click="addRow"
+                    >
+                        <Plus :size="17" />Tambah {{ currentTitle }}
+                    </button>
+                </div>
+                <div class="toolbar">
+                    <div>
+                        <Search :size="18" /><input
+                            v-model="query"
+                            placeholder="Cari data..."
+                        />
+                    </div>
+                    <select>
+                        <option>Semua status</option>
+                        <option>Aktif</option>
+                        <option>Draft</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <div v-if="adminLoading" class="empty">
+                        <Activity />
+                        <h3>Memuat data...</h3>
+                    </div>
+                    <table v-else-if="filtered.length">
+                        <thead>
+                            <tr>
+                                <th>Urutan</th>
+                                <th>Konten</th>
+                                <th>Status</th>
+                                <th>Diperbarui</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in filtered" :key="r.id">
+                                <td><GripVertical :size="18" /></td>
+                                <td>
+                                    <div class="content-row">
+                                        <img
+                                            v-if="r.image"
+                                            :src="r.image"
+                                            alt=""
+                                        />
+                                        <div>
+                                            <b>{{ r.name }}</b
+                                            ><small>{{ r.sub }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button
+                                        class="toggle"
+                                        :class="{ on: r.status }"
+                                        :disabled="
+                                            ['settings', 'activity'].includes(
+                                                moduleType(),
+                                            )
+                                        "
+                                        @click="toggleRow(r)"
+                                    >
+                                        <i />
+                                    </button>
+                                </td>
+                                <td>
+                                    {{
+                                        r.raw.updated_at
+                                            ? new Date(
+                                                  r.raw.updated_at,
+                                              ).toLocaleDateString("id-ID")
+                                            : "—"
+                                    }}
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button @click="router.push('/')">
+                                            <Eye /></button
+                                        ><button @click="editRow(r)">
+                                            <Pencil /></button
+                                        ><button
+                                            class="danger"
+                                            :disabled="
+                                                [
+                                                    'settings',
+                                                    'activity',
+                                                ].includes(moduleType())
+                                            "
+                                            @click="removeRow(r.id, r.name)"
+                                        >
+                                            <Trash2 />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-else class="empty">
+                        <Search />
+                        <h3>Data tidak ditemukan</h3>
+                        <p>Belum ada data atau coba kata kunci lain.</p>
+                    </div>
+                </div>
+                <div class="pagination">
+                    <span>Menampilkan {{ filtered.length }} data</span>
+                    <div>
+                        <button disabled>‹</button
+                        ><button class="active">1</button
+                        ><button disabled>›</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="toast" class="toast">✓ {{ toast }}</div>
+    </div>
 
-  <div v-else-if="route.name==='404'" class="not-found"><RouterLink to="/" class="logo"><span><Music2/></span><div><b>13 NADI</b><small>RECORDS</small></div></RouterLink><b>404</b><h1>Halaman tidak ditemukan</h1><p>Sepertinya nada yang Anda cari tidak ada di sini.</p><RouterLink class="button" to="/">Kembali ke Beranda</RouterLink></div>
+    <div v-else-if="route.name === '404'" class="not-found">
+        <RouterLink to="/" class="logo"
+            ><span><Music2 /></span>
+            <div><b>13 NADI</b><small>RECORDS</small></div></RouterLink
+        ><b>404</b>
+        <h1>Halaman tidak ditemukan</h1>
+        <p>Sepertinya nada yang Anda cari tidak ada di sini.</p>
+        <RouterLink class="button" to="/">Kembali ke Beranda</RouterLink>
+    </div>
 
-  <div v-else>
-    <div class="scroll-progress" :style="{width:`${scrollProgress}%`}" aria-hidden="true"></div>
-    <header class="header gradient-header" :class="{'home-header':route.name==='home'}"><RouterLink to="/" class="public-brand" aria-label="13 Nadi Musik & Entertainment"><img src="/logo.png" alt="13 Nadi Musik & Entertainment"/></RouterLink><button class="menu" aria-label="Menu" @click="menuOpen=!menuOpen"><Menu/></button><nav :class="{open:menuOpen}"><RouterLink to="/" @click="menuOpen=false">Beranda</RouterLink><RouterLink to="/rilis" @click="menuOpen=false">Rilis</RouterLink><RouterLink to="/berita" @click="menuOpen=false">Berita</RouterLink><RouterLink to="/foto" @click="menuOpen=false">Foto</RouterLink><RouterLink to="/video" @click="menuOpen=false">Video</RouterLink><RouterLink to="/kolaborasi" @click="menuOpen=false">Kolaborasi</RouterLink><RouterLink to="/tentang" @click="menuOpen=false">Tentang</RouterLink></nav></header>
-    <main v-if="route.name==='home'">
-      <section class="hero vue-hero hero-slider" @mouseenter="slidePaused=true" @mouseleave="slidePaused=false">
-        <div v-for="(slide,i) in heroSlides" :key="slide.image" class="hero-bg slider-bg" :class="[slide.imageClass,{active:i===activeSlide}]" :style="{backgroundImage:`linear-gradient(90deg,#020f24 0%,rgba(2,18,42,.94) 29%,rgba(3,38,75,.22) 72%),url('${slide.image}')`}"/>
-        <div class="music-ornaments" aria-hidden="true"><Music2 class="note note-one"/><span class="note note-two">♪</span><span class="note note-three">♫</span><div class="sound-wave"><i v-for="n in 18" :key="n"/></div></div>
-        <Transition name="hero-copy" mode="out-in"><div :key="activeSlide" class="hero-content" :class="heroSlides[activeSlide].imageClass"><h1><template v-for="(line,lineIndex) in heroSlides[activeSlide].title" :key="line"><br v-if="lineIndex"/>{{line}}</template><span>.</span></h1><p>{{heroSlides[activeSlide].text}}</p><div><a class="button" :href="heroSlides[activeSlide].link"><span class="play-mini">▶</span>{{heroSlides[activeSlide].button}}</a></div></div></Transition>
-        <div class="slider-controls"><button aria-label="Slide sebelumnya" @click="goSlide(activeSlide-1)"><ChevronLeft/></button><div class="slide-dots"><button v-for="(_,i) in heroSlides" :key="i" :class="{active:i===activeSlide}" :aria-label="`Buka slide ${i+1}`" @click="goSlide(i)"><span/></button></div><button aria-label="Slide berikutnya" @click="nextSlide"><ChevronRight/></button></div>
-        <div class="slide-counter"><b>0{{activeSlide+1}}</b><span>/</span><small>0{{heroSlides.length}}</small></div>
-        <div class="hero-wave" aria-hidden="true"><svg viewBox="0 0 1200 120" preserveAspectRatio="none"><defs><linearGradient id="waveBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#26c7ee"/><stop offset=".62" stop-color="#078bcf"/><stop offset="1" stop-color="#1768b0"/></linearGradient></defs><path class="wave-back" d="M0 10 C150 93 310 112 500 67 C672 26 765 43 870 61 C978 80 1080 51 1200 0 L1200 120 L0 120 Z"/><path class="wave-front" d="M0 33 C156 108 318 121 505 80 C675 43 768 57 875 75 C987 94 1087 67 1200 24 L1200 120 L0 120 Z"/></svg></div>
-      </section>
-      <section id="tentang" class="about concept-about wrap reveal-item"><div class="about-copy"><span class="eyebrow">TENTANG KAMI</span><h2>{{ aboutTitle }}</h2><p>{{ aboutParagraphOne }}</p><p class="about-extra">{{ aboutParagraphTwo }}</p><div class="about-manifesto"><small>13 NADI MUSIK</small><strong><span>Lebih Dekat.</span><span>Lebih Hidup.</span><span>Lebih Bermakna.</span></strong></div><a class="outline-button" href="#rilisan">Pelajari Lebih Lanjut <ArrowRight :size="16"/></a></div><div class="about-visual"><div class="about-photo"><img :src="aboutImage||gallery[1]" alt="Pertunjukan musik 13 Nadi"/><div class="photo-shade"></div><div class="now-playing"><span class="mini-disc"><Disc3 :size="22"/></span><div><small>OUR SOUND</small><b>Nada yang hidup di setiap panggung</b></div></div><div class="photo-equalizer" aria-hidden="true"><i v-for="n in 14" :key="n" :style="{height:`${10 + (n * 9) % 26}px`}"></i></div></div><Music2 class="about-floating-note" aria-hidden="true"/></div><div class="about-bg-ornaments" aria-hidden="true"><Disc3 class="ornament-disc"/><Music2 class="ornament-note ornament-note-one"/><Music2 class="ornament-note ornament-note-two"/><div class="ornament-wave"><i v-for="n in 28" :key="n" :style="{height:`${8 + (n * 11) % 38}px`}"></i></div><div class="ornament-rings"></div></div></section>
-      <section class="program-slider" aria-label="Program 13 Nadi" @mouseenter="programPaused=true" @mouseleave="programPaused=false"><div class="program-slider-inner"><button class="program-arrow" aria-label="Program sebelumnya" @click="goProgram(activeProgram-1)"><ChevronLeft/></button><Transition name="program-copy" mode="out-in"><a :key="activeProgram" class="program-slide" :href="programSlides[activeProgram].link"><span class="program-icon"><component :is="programSlides[activeProgram].icon"/></span><span><small>PROGRAM 0{{activeProgram+1}}</small><b>{{programSlides[activeProgram].title}}</b><em>{{programSlides[activeProgram].text}}</em></span><ArrowRight class="program-link-icon"/></a></Transition><div class="program-dots"><button v-for="(_,i) in programSlides" :key="i" :class="{active:i===activeProgram}" :aria-label="`Buka program ${i+1}`" @click="goProgram(i)"></button></div><button class="program-arrow" aria-label="Program berikutnya" @click="goProgram(activeProgram+1)"><ChevronRight/></button></div></section>
-      <section class="creative-services"><div class="wrap"><div class="service-heading reveal-item"><div class="service-intro"><span class="eyebrow">{{infoHeading.label}}</span><p>{{infoHeading.description}}</p><div class="service-signal" aria-hidden="true"><i v-for="n in 12" :key="n" :style="{height:`${7+(n*7)%24}px`}"></i></div></div><div class="service-title-block"><small>13 NADI CREATIVE ECOSYSTEM</small><h2>{{infoHeading.title}}</h2><span><Disc3 :size="16"/> Ide · Produksi · Distribusi</span></div></div><div class="creative-service-grid"><article v-for="(service,i) in infoServices" :key="service.slug" class="creative-service reveal-item"><span>0{{i+1}}</span><component :is="[Disc3,Music2,Activity][i%3]"/><h3>{{service.title}}</h3><p>{{service.description}}</p><a :href="service.metadata.link||'#'">{{service.button}} <ArrowRight :size="16"/></a></article></div></div></section>
-      <section id="rilisan" class="soft navy-band releases-showcase reveal-item">
-        <div class="release-music-overlay" aria-hidden="true"><Music2 class="music-note note-one"/><Music2 class="music-note note-two"/><Music2 class="music-note note-three"/><div class="sound-orbit"></div><div class="equalizer-strip"><i v-for="n in 22" :key="n" :style="{height:`${8 + (n * 7) % 30}px`}"></i></div></div>
-        <div class="wrap release-content"><div class="section-title"><div><span>RILIS TERBARU</span><h2>Latest Releases</h2></div><a href="#">Lihat Semua <ArrowRight :size="16"/></a></div><div class="release-grid"><RouterLink v-for="r in releases" :key="r.slug" class="release-card" :to="`/rilisan/${r.slug}`"><div><img :src="r.image" :alt="`Sampul ${r.title}`"/></div><div class="release-info"><h3>{{r.title}}</h3><p>{{r.artist}}</p><small>{{r.genre}} · {{r.year}}</small><span class="play">▶</span></div></RouterLink></div></div>
-        <div class="release-wave release-wave-bottom" aria-hidden="true"><svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path class="release-wave-accent" d="M0 52 C172 101 344 94 516 50 C696 4 844 11 1018 60 C1190 108 1328 98 1440 70 L1440 120 L0 120 Z"/><path class="release-wave-surface" d="M0 70 C174 112 346 106 520 66 C700 25 848 31 1022 76 C1194 120 1330 112 1440 88 L1440 120 L0 120 Z"/></svg></div>
-      </section>
-      <section id="berita" class="wrap latest-news reveal-item"><div class="news-bg-ornaments" aria-hidden="true"><Disc3 class="news-disc"/><Music2 class="news-note news-note-one"/><Music2 class="news-note news-note-two"/><div class="news-equalizer"><i v-for="n in 34" :key="n" :style="{height:`${8 + (n * 13) % 45}px`}"></i></div><div class="news-signal-rings"></div></div><div class="section-title"><div><span>KABAR 13 NADI</span><h2>Berita Terbaru</h2></div><a href="#berita">Lihat Semua <ArrowRight :size="16"/></a></div><div class="news-grid"><RouterLink v-for="(item,i) in news" :key="item.slug" :to="`/berita/${item.slug}`" class="news-card"><div class="news-image"><img :src="item.image" :alt="item.title"/><span>0{{i+1}}</span><div class="news-category">{{item.category}}</div></div><div class="news-body"><small>{{item.date}}</small><h3>{{item.title}}</h3><p>{{item.excerpt}}</p><b>Baca Selengkapnya <ArrowRight :size="15"/></b></div></RouterLink></div></section>
-      <section id="galeri" class="gallery-section concept-gallery media-showcase reveal-item"><div class="media-bg-ornaments" aria-hidden="true"><Music2 class="media-note media-note-one"/><Music2 class="media-note media-note-two"/><Disc3 class="media-disc"/><div class="media-equalizer"><i v-for="n in 32" :key="n" :style="{height:`${7 + (n * 13) % 42}px`}"></i></div></div><div class="wrap"><div class="section-title media-title"><div><span>GALERI 13 NADI</span><h2>Moments in Sound</h2><p>Menangkap energi panggung melalui foto dan cerita bergerak.</p></div></div><div class="media-gallery-layout"><div class="photo-gallery-panel"><div class="panel-heading"><span><Image :size="18"/>Galeri Foto</span><a class="panel-view-all" href="#galeri-foto">Lihat Semua Foto <ArrowRight :size="14"/></a></div><div id="galeri-foto" class="photo-mosaic"><figure v-for="(g,i) in gallery.slice(0,4)" :key="i"><img :src="g" :alt="`Momen panggung ${i+1}`"/><figcaption><span>0{{i+1}}</span><b>{{['Energi Penonton','Sorot Panggung','Nada yang Hidup','Di Balik Cahaya'][i]}}</b></figcaption></figure></div></div><div class="video-gallery-panel"><div class="panel-heading"><span><Film :size="18"/>Galeri Video</span><a class="panel-view-all" href="#galeri-video">Lihat Semua Video <ArrowRight :size="14"/></a></div><div id="galeri-video" class="video-list"><button v-for="(video,i) in videoGallery" :key="video.title" class="video-card" @click="selectedVideo=i"><img :src="video.image" :alt="video.title"/><span class="video-overlay"></span><span class="video-play">▶</span><span class="video-duration">{{video.duration}}</span><span class="video-copy"><small>VIDEO 0{{i+1}}</small><b>{{video.title}}</b></span></button></div></div></div></div></section>
-      <section id="kolaborasi" class="cta concept-cta"><div class="handshake"><Handshake :size="58"/></div><div><h2>Mari Berkolaborasi</h2><p>Kami selalu terbuka untuk kolaborasi kreatif.<br/>Jika kamu memiliki ide, karya, atau proyek,<br/>ayo wujudkan bersama 13 Nadi Records.</p></div><a class="button" href="mailto:hello@13nadi.com">Hubungi Kami <ArrowRight :size="18"/></a></section>
-    </main>
-    <main v-else-if="route.name==='releases'" class="content-page page-releases"><section class="inner-hero"><div class="wrap"><span>DISKOGRAFI 13 NADI</span><h1>Rilis Musik</h1><p>Karya terbaru dari musisi 13 Nadi—setiap rilisan membawa karakter, cerita, dan warna yang berbeda.</p></div></section><section class="wrap page-section"><div class="page-heading"><div><span>JELAJAHI KARYA</span><h2>Semua Rilisan</h2></div><small>{{releases.length}} rilisan pilihan</small></div><div class="release-grid page-release-grid"><RouterLink v-for="r in releases" :key="r.slug" class="release-card" :to="`/rilisan/${r.slug}`"><div><img :src="r.image" :alt="`Sampul ${r.title}`"/></div><div class="release-info"><h3>{{r.title}}</h3><p>{{r.artist}}</p><small>{{r.genre}} · {{r.year}}</small><span class="play">▶</span></div></RouterLink></div></section></main>
-    <main v-else-if="route.name==='news-list'" class="content-page page-news"><section class="inner-hero"><div class="wrap"><span>KABAR & CERITA</span><h1>Berita Musik</h1><p>Ikuti kabar rilisan, perjalanan artis, sesi studio, dan kolaborasi terbaru dari ekosistem 13 Nadi.</p></div></section><section class="wrap page-section"><div class="page-heading"><div><span>UPDATE TERBARU</span><h2>Semua Berita</h2></div><small>{{news.length}} artikel</small></div><div class="news-grid"><RouterLink v-for="(item,i) in news" :key="item.slug" :to="`/berita/${item.slug}`" class="news-card"><div class="news-image"><img :src="item.image" :alt="item.title"/><span>0{{i+1}}</span><div class="news-category">{{item.category}}</div></div><div class="news-body"><small>{{item.date}}</small><h3>{{item.title}}</h3><p>{{item.excerpt}}</p><b>Baca Selengkapnya <ArrowRight :size="15"/></b></div></RouterLink></div></section></main>
-    <main v-else-if="route.name==='photos'" class="content-page page-photos"><section class="inner-hero"><div class="wrap"><span>GALERI FOTO</span><h1>Moments in Sound</h1><p>Energi panggung, ekspresi artis, dan momen di balik layar yang terekam dalam satu cerita visual.</p></div></section><section class="wrap page-section"><div class="page-heading"><div><span>ARSIP VISUAL</span><h2>Galeri Foto</h2></div><small>{{gallery.length}} momen</small></div><div class="photo-page-grid"><figure v-for="(g,i) in gallery" :key="g"><img :src="g" :alt="`Momen musik ${i+1}`"/><figcaption><span>0{{i+1}}</span><b>{{['Energi Penonton','Sorot Panggung','Nada yang Hidup','Di Balik Cahaya','Cerita Sang Artis'][i]}}</b></figcaption></figure></div></section></main>
-    <main v-else-if="route.name==='videos'" class="content-page page-videos"><section class="inner-hero"><div class="wrap"><span>GALERI VIDEO</span><h1>Stories in Motion</h1><p>Nikmati pertunjukan, proses kreatif, dan kisah di balik musik melalui rangkaian video pilihan.</p></div></section><section class="wrap page-section"><div class="page-heading"><div><span>13 NADI VIDEO</span><h2>Video Terbaru</h2></div><small>{{videoGallery.length}} video</small></div><div class="video-page-grid"><button v-for="(video,i) in videoGallery" :key="video.title" class="video-page-card" @click="selectedVideo=i"><img :src="video.image" :alt="video.title"/><span class="video-overlay"></span><span class="video-play">▶</span><span class="video-duration">{{video.duration}}</span><span class="video-copy"><small>VIDEO 0{{i+1}}</small><b>{{video.title}}</b></span></button></div></section></main>
-    <main v-else-if="route.name==='collaboration'" class="content-page page-collaboration"><section class="inner-hero"><div class="wrap"><span>BERKARYA BERSAMA</span><h1>Kolaborasi Kreatif</h1><p>Dari ide pertama hingga karya bertemu audiens—kami hadir sebagai partner kreatif yang tumbuh bersama Anda.</p><a class="button" href="mailto:hello@13nadi.com">Mulai Kolaborasi <ArrowRight :size="17"/></a></div></section><section class="wrap page-section"><div class="page-heading"><div><span>RUANG KOLABORASI</span><h2>Apa yang Bisa Kita Bangun?</h2></div></div><div class="collaboration-grid"><article><Disc3/><span>01</span><h3>Artist Development</h3><p>Pengembangan identitas, arah musikal, dan strategi karya yang kuat.</p></article><article><Music2/><span>02</span><h3>Music Production</h3><p>Pendampingan penulisan, rekaman, hingga produksi siap rilis.</p></article><article><Activity/><span>03</span><h3>Digital Distribution</h3><p>Distribusi dan kampanye agar karya menjangkau audiens yang tepat.</p></article></div></section></main>
-    <main v-else-if="route.name==='about'" class="content-page page-about"><section class="inner-hero"><div class="wrap"><span>TENTANG KAMI</span><h1>13 Nadi Musik</h1><p>Partner kreatif untuk musisi dan content creator yang ingin fokus berkarya serta membawa ide mereka lebih jauh.</p></div></section><section class="wrap about-page-section"><div><span class="eyebrow">CERITA 13 NADI</span><h2>Dari label musik menjadi creative partner.</h2><p>Berawal dari label musik digital di tahun 2019, 13NadiMusik kini berevolusi menjadi “Digital content creator partner”. Banyak content creator memiliki potensi menghadirkan konten berkualitas, namun terkendala hal teknis. Kami hadir memberikan solusi.</p><p>Ide orisinal dan bakat kuat perlu didukung pemahaman algoritma platform, kualitas audio visual, serta digital marketing. 13 Nadi menjadi partner agar kreator dapat lebih fokus mewujudkan karya yang menghibur, mengedukasi, dan menginspirasi.</p><div class="about-values"><b>Lebih Dekat.</b><b>Lebih Hidup.</b><b>Lebih Bermakna.</b></div></div><div class="about-page-photo"><img :src="aboutImage||gallery[1]" alt="Panggung 13 Nadi"/><Music2/></div></section></main>
-    <main v-else-if="['release','artist','news'].includes(String(route.name)) && publicLoading" class="detail-loading wrap" aria-live="polite"><span class="detail-loading-disc"><Disc3/></span><div><span class="eyebrow">MEMUAT KONTEN</span><h1>Menyiapkan cerita untuk Anda...</h1><p>Mohon tunggu sebentar.</p></div></main>
-    <main v-else-if="route.name==='release' && currentRelease" class="release-detail wrap"><section class="release-overview"><div class="release-cover-frame"><span class="cover-kicker"><Disc3 :size="14"/> COVER ART</span><img class="detail-cover" :src="currentRelease.image" :alt="`Sampul ${currentRelease.title}`"/><span class="cover-caption">13 NADI MUSIK · OFFICIAL RELEASE</span></div><article class="release-copy"><div v-if="currentRelease.genre||currentReleaseMusicGenre||currentRelease.year" class="release-meta"><span v-if="currentRelease.genre"><Disc3 :size="15"/>{{currentRelease.genre}}</span><span v-if="currentReleaseMusicGenre"><Music2 :size="15"/>{{currentReleaseMusicGenre}}</span><span v-if="currentRelease.year"><Activity :size="15"/>{{currentRelease.year}}</span></div><span v-else class="eyebrow">RILISAN 13 NADI</span><h1>{{currentRelease.title}}</h1><h2>{{currentRelease.artist}}</h2><div class="release-description"><small>TENTANG RILISAN</small><p>{{currentReleaseDescription||'Informasi lengkap rilisan ini akan segera diperbarui.'}}</p></div></article></section><section v-if="spotifyEmbedUrl||youtubeEmbedUrl" class="release-media"><div class="release-media-heading"><span><Music2 :size="18"/> DENGARKAN &amp; TONTON</span><h3>Rasakan rilisan dalam suara dan visual.</h3><p>Pilih platform favorit Anda untuk menikmati karya terbaru 13 Nadi Musik.</p></div><div class="release-media-grid"><section v-if="spotifyEmbedUrl" class="spotify-player" aria-label="Spotify web player"><div class="spotify-player-heading"><span><Music2 :size="18"/></span><div><small>DENGARKAN DI SPOTIFY</small><b>{{currentRelease.title}} · {{currentRelease.artist}}</b></div></div><iframe :src="spotifyEmbedUrl" :title="`Spotify player ${currentRelease.title}`" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe><a v-if="currentRelease.externalUrl" class="media-link spotify-link" :href="currentRelease.externalUrl" target="_blank" rel="noopener noreferrer">Buka di Spotify <ExternalLink :size="15"/></a></section><section v-if="youtubeEmbedUrl" class="youtube-player" aria-label="Video YouTube rilisan"><div class="youtube-player-heading"><span>▶</span><div><small>VIDEO MUSIK</small><b>{{currentRelease.title}} · {{currentRelease.artist}}</b></div><a :href="currentReleaseYoutubeUrl" target="_blank" rel="noopener noreferrer">Buka YouTube <ExternalLink :size="14"/></a></div><div class="youtube-frame"><iframe :src="youtubeEmbedUrl" :title="`Video YouTube ${currentRelease.title}`" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe></div></section></div></section></main>
-    <main v-else-if="route.name==='artist' && currentArtist" class="detail wrap"><img class="detail-cover portrait" :src="currentArtist.image"/><div><span class="eyebrow">ARTIS 13 NADI</span><h1>{{currentArtist.name}}</h1><h2>{{currentArtist.role}}</h2><p>{{currentArtist.name}} menghadirkan karya yang personal dan berani. Bersama 13 Nadi, setiap lagu menjadi ruang bertemu antara musisi dan pendengarnya.</p><h3>Diskografi</h3><p>Pulang Perlahan · 2026</p></div></main>
-    <main v-else-if="route.name==='news' && currentNews" class="detail news-detail wrap"><img class="detail-cover" :src="currentNews.image" :alt="currentNews.title"/><div><span class="eyebrow">{{currentNews.category}} · {{currentNews.date}}</span><h1>{{currentNews.title}}</h1><p>{{currentNews.excerpt}}</p><p>13 Nadi menghadirkan cerita di balik musik, panggung, dan proses kreatif para artis. Setiap kabar menjadi ruang untuk mengenal karya secara lebih dekat dan bermakna.</p><RouterLink class="button" to="/#berita"><ArrowRight :size="17"/>Kembali ke Berita</RouterLink></div></main>
-    <main v-else-if="['privacy','terms'].includes(String(route.name))" class="legal wrap"><span class="eyebrow">13 NADI RECORDS</span><h1>{{route.name==='privacy'?'Kebijakan Privasi':'Syarat & Ketentuan'}}</h1><p>Terakhir diperbarui: 22 Agustus 2026</p><h2>Informasi umum</h2><p>Kami menghargai privasi pengunjung dan hanya memproses informasi yang diperlukan untuk menyediakan layanan dan meningkatkan pengalaman pengguna.</p><h2>Penggunaan layanan</h2><p>Dengan menggunakan situs ini, Anda menyetujui penggunaan yang wajar dan menghormati hak cipta setiap karya.</p></main>
-    <main v-else class="legal wrap"><span class="eyebrow">KONTEN TIDAK DITEMUKAN</span><h1>Halaman belum tersedia</h1><p>Konten yang Anda cari mungkin sudah dipindahkan, dinonaktifkan, atau belum diterbitkan.</p><RouterLink class="button" to="/">Kembali ke Beranda</RouterLink></main>
-    <div v-if="selectedVideo!==null" class="video-modal" role="dialog" aria-modal="true" aria-label="Preview video" @click.self="selectedVideo=null"><div class="video-modal-card"><button aria-label="Tutup preview" @click="selectedVideo=null"><X/></button><div class="video-modal-frame"><img :src="videoGallery[selectedVideo].image" :alt="videoGallery[selectedVideo].title"/><span class="modal-play">▶</span><div class="modal-bars"><i v-for="n in 24" :key="n" :style="{height:`${8 + (n * 7) % 32}px`}"></i></div></div><small>13 NADI VIDEO PREMIERE</small><h3>{{videoGallery[selectedVideo].title}}</h3><p>Preview visual pertunjukan dan perjalanan kreatif 13 Nadi Musik & Entertainment.</p></div></div>
-    <footer><div class="wrap footer-grid"><div><RouterLink to="/" class="public-brand footer-brand" aria-label="13 Nadi Musik & Entertainment"><img src="/logo.png" alt="13 Nadi Musik & Entertainment"/></RouterLink><p>Nada yang Menghubungkan Cerita.</p></div><div><b>Navigasi</b><RouterLink to="/">Beranda</RouterLink><RouterLink to="/rilis">Rilis</RouterLink><RouterLink to="/berita">Berita</RouterLink><RouterLink to="/foto">Foto</RouterLink><RouterLink to="/video">Video</RouterLink><RouterLink to="/kolaborasi">Kolaborasi</RouterLink><RouterLink to="/tentang">Tentang</RouterLink></div><div><b>Ikuti Kami</b><a href="#">Spotify</a><a href="#">Apple Music</a><a href="#">YouTube</a><a href="#">Instagram</a></div><div><b>Hubungi Kami</b><a href="mailto:hello@13nadirecords.com">hello@13nadirecords.com</a><a href="tel:+6281234567890">+62 812-3456-7890</a><span>Jakarta, Indonesia</span></div></div><div class="wrap copyright">© 2026 13 Nadi Records. All rights reserved.</div></footer>
-  </div>
+    <div v-else>
+        <div
+            class="scroll-progress"
+            :style="{ width: `${scrollProgress}%` }"
+            aria-hidden="true"
+        ></div>
+        <header
+            class="header gradient-header"
+            :class="{ 'home-header': route.name === 'home' }"
+        >
+            <RouterLink
+                to="/"
+                class="public-brand"
+                aria-label="13 Nadi Musik & Entertainment"
+                ><img
+                    src="/logo.png"
+                    alt="13 Nadi Musik & Entertainment" /></RouterLink
+            ><button
+                class="menu"
+                aria-label="Menu"
+                @click="menuOpen = !menuOpen"
+            >
+                <Menu />
+            </button>
+            <nav :class="{ open: menuOpen }">
+                <RouterLink to="/" @click="menuOpen = false">Beranda</RouterLink
+                ><RouterLink to="/rilis" @click="menuOpen = false"
+                    >Rilis</RouterLink
+                ><RouterLink to="/berita" @click="menuOpen = false"
+                    >Berita</RouterLink
+                ><RouterLink to="/foto" @click="menuOpen = false"
+                    >Foto</RouterLink
+                ><RouterLink to="/video" @click="menuOpen = false"
+                    >Video</RouterLink
+                ><RouterLink to="/kolaborasi" @click="menuOpen = false"
+                    >Kolaborasi</RouterLink
+                ><RouterLink to="/tentang" @click="menuOpen = false"
+                    >Tentang</RouterLink
+                >
+            </nav>
+        </header>
+        <main v-if="route.name === 'home'">
+            <section
+                class="hero vue-hero hero-slider"
+                @mouseenter="slidePaused = true"
+                @mouseleave="slidePaused = false"
+            >
+                <div
+                    v-for="(slide, i) in heroSlides"
+                    :key="slide.image"
+                    class="hero-bg slider-bg"
+                    :class="[slide.imageClass, { active: i === activeSlide }]"
+                    :style="{
+                        backgroundImage: `linear-gradient(90deg,#020f24 0%,rgba(2,18,42,.94) 29%,rgba(3,38,75,.22) 72%),url('${slide.image}')`,
+                    }"
+                />
+                <div class="music-ornaments" aria-hidden="true">
+                    <Music2 class="note note-one" /><span class="note note-two"
+                        >♪</span
+                    ><span class="note note-three">♫</span>
+                    <div class="sound-wave"><i v-for="n in 18" :key="n" /></div>
+                </div>
+                <Transition name="hero-copy" mode="out-in"
+                    ><div
+                        :key="activeSlide"
+                        class="hero-content"
+                        :class="heroSlides[activeSlide].imageClass"
+                    >
+                        <h1>
+                            <template
+                                v-for="(line, lineIndex) in heroSlides[
+                                    activeSlide
+                                ].title"
+                                :key="line"
+                                ><br v-if="lineIndex" />{{ line }}</template
+                            ><span>.</span>
+                        </h1>
+                        <p>{{ heroSlides[activeSlide].text }}</p>
+                        <div>
+                            <a
+                                class="button"
+                                :href="heroSlides[activeSlide].link"
+                                ><span class="play-mini">▶</span
+                                >{{ heroSlides[activeSlide].button }}</a
+                            >
+                        </div>
+                    </div></Transition
+                >
+                <div class="slider-controls">
+                    <button
+                        aria-label="Slide sebelumnya"
+                        @click="goSlide(activeSlide - 1)"
+                    >
+                        <ChevronLeft />
+                    </button>
+                    <div class="slide-dots">
+                        <button
+                            v-for="(_, i) in heroSlides"
+                            :key="i"
+                            :class="{ active: i === activeSlide }"
+                            :aria-label="`Buka slide ${i + 1}`"
+                            @click="goSlide(i)"
+                        >
+                            <span />
+                        </button>
+                    </div>
+                    <button aria-label="Slide berikutnya" @click="nextSlide">
+                        <ChevronRight />
+                    </button>
+                </div>
+                <div class="slide-counter">
+                    <b>0{{ activeSlide + 1 }}</b
+                    ><span>/</span><small>0{{ heroSlides.length }}</small>
+                </div>
+                <div class="hero-wave" aria-hidden="true">
+                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient
+                                id="waveBlue"
+                                x1="0"
+                                y1="0"
+                                x2="1"
+                                y2="0"
+                            >
+                                <stop offset="0" stop-color="#26c7ee" />
+                                <stop offset=".62" stop-color="#078bcf" />
+                                <stop offset="1" stop-color="#1768b0" />
+                            </linearGradient>
+                        </defs>
+                        <path
+                            class="wave-back"
+                            d="M0 10 C150 93 310 112 500 67 C672 26 765 43 870 61 C978 80 1080 51 1200 0 L1200 120 L0 120 Z"
+                        />
+                        <path
+                            class="wave-front"
+                            d="M0 33 C156 108 318 121 505 80 C675 43 768 57 875 75 C987 94 1087 67 1200 24 L1200 120 L0 120 Z"
+                        />
+                    </svg>
+                </div>
+            </section>
+            <section id="tentang" class="about concept-about wrap reveal-item">
+                <div class="about-copy">
+                    <span class="eyebrow">TENTANG KAMI</span>
+                    <h2>{{ aboutTitle }}</h2>
+                    <p>{{ aboutParagraphOne }}</p>
+                    <p class="about-extra">{{ aboutParagraphTwo }}</p>
+                    <div class="about-manifesto">
+                        <small>13 NADI MUSIK</small
+                        ><strong
+                            ><span>Lebih Dekat.</span><span>Lebih Hidup.</span
+                            ><span>Lebih Bermakna.</span></strong
+                        >
+                    </div>
+                    <a class="outline-button" href="#rilisan"
+                        >Pelajari Lebih Lanjut <ArrowRight :size="16"
+                    /></a>
+                </div>
+                <div class="about-visual">
+                    <div class="about-photo">
+                        <img
+                            :src="aboutImage || gallery[1]"
+                            alt="Pertunjukan musik 13 Nadi"
+                        />
+                        <div class="photo-shade"></div>
+                        <div class="now-playing">
+                            <span class="mini-disc"><Disc3 :size="22" /></span>
+                            <div>
+                                <small>OUR SOUND</small
+                                ><b>Nada yang hidup di setiap panggung</b>
+                            </div>
+                        </div>
+                        <div class="photo-equalizer" aria-hidden="true">
+                            <i
+                                v-for="n in 14"
+                                :key="n"
+                                :style="{ height: `${10 + ((n * 9) % 26)}px` }"
+                            ></i>
+                        </div>
+                    </div>
+                    <Music2 class="about-floating-note" aria-hidden="true" />
+                </div>
+                <div class="about-bg-ornaments" aria-hidden="true">
+                    <Disc3 class="ornament-disc" /><Music2
+                        class="ornament-note ornament-note-one"
+                    /><Music2 class="ornament-note ornament-note-two" />
+                    <div class="ornament-wave">
+                        <i
+                            v-for="n in 28"
+                            :key="n"
+                            :style="{ height: `${8 + ((n * 11) % 38)}px` }"
+                        ></i>
+                    </div>
+                    <div class="ornament-rings"></div>
+                </div>
+            </section>
+            <section
+                class="program-slider"
+                aria-label="Program 13 Nadi"
+                @mouseenter="programPaused = true"
+                @mouseleave="programPaused = false"
+            >
+                <div class="program-slider-inner">
+                    <button
+                        class="program-arrow"
+                        aria-label="Program sebelumnya"
+                        @click="goProgram(activeProgram - 1)"
+                    >
+                        <ChevronLeft /></button
+                    ><Transition name="program-copy" mode="out-in"
+                        ><a
+                            :key="activeProgram"
+                            class="program-slide"
+                            :href="programSlides[activeProgram].link"
+                            ><span class="program-icon"
+                                ><component
+                                    :is="
+                                        programSlides[activeProgram].icon
+                                    " /></span
+                            ><span
+                                ><small>PROGRAM 0{{ activeProgram + 1 }}</small
+                                ><b>{{ programSlides[activeProgram].title }}</b
+                                ><em>{{
+                                    programSlides[activeProgram].text
+                                }}</em></span
+                            ><ArrowRight class="program-link-icon" /></a
+                    ></Transition>
+                    <div class="program-dots">
+                        <button
+                            v-for="(_, i) in programSlides"
+                            :key="i"
+                            :class="{ active: i === activeProgram }"
+                            :aria-label="`Buka program ${i + 1}`"
+                            @click="goProgram(i)"
+                        ></button>
+                    </div>
+                    <button
+                        class="program-arrow"
+                        aria-label="Program berikutnya"
+                        @click="goProgram(activeProgram + 1)"
+                    >
+                        <ChevronRight />
+                    </button>
+                </div>
+            </section>
+            <section
+                v-if="homeBanner.image"
+                class="home-banner reveal-item"
+                aria-label="Banner utama"
+            >
+                <div class="wrap">
+                    <a
+                        v-if="homeBanner.linkEnabled && homeBanner.link"
+                        class="home-banner-frame is-linked"
+                        :href="homeBanner.link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        :aria-label="homeBanner.title"
+                    >
+                        <img :src="homeBanner.image" :alt="homeBanner.title" />
+                        <span>Buka informasi <ExternalLink :size="16" /></span>
+                    </a>
+                    <div v-else class="home-banner-frame">
+                        <img :src="homeBanner.image" :alt="homeBanner.title" />
+                    </div>
+                </div>
+            </section>
+            <section class="creative-services">
+                <div class="wrap">
+                    <div class="service-heading reveal-item">
+                        <div class="service-intro">
+                            <span class="eyebrow">{{ infoHeading.label }}</span>
+                            <p>{{ infoHeading.description }}</p>
+                            <div class="service-signal" aria-hidden="true">
+                                <i
+                                    v-for="n in 12"
+                                    :key="n"
+                                    :style="{
+                                        height: `${7 + ((n * 7) % 24)}px`,
+                                    }"
+                                ></i>
+                            </div>
+                        </div>
+                        <div class="service-title-block">
+                            <small>13 NADI CREATIVE ECOSYSTEM</small>
+                            <h2>{{ infoHeading.title }}</h2>
+                            <span
+                                ><Disc3 :size="16" /> Ide · Produksi ·
+                                Distribusi</span
+                            >
+                        </div>
+                    </div>
+                    <div class="creative-service-grid">
+                        <article
+                            v-for="(service, i) in infoServices"
+                            :key="service.slug"
+                            class="creative-service reveal-item"
+                        >
+                            <span>0{{ i + 1 }}</span
+                            ><component
+                                :is="[Disc3, Music2, Activity][i % 3]"
+                            />
+                            <h3>{{ service.title }}</h3>
+                            <p>{{ service.description }}</p>
+                            <a :href="service.metadata.link || '#'"
+                                >{{ service.button }} <ArrowRight :size="16"
+                            /></a>
+                        </article>
+                    </div>
+                </div>
+            </section>
+            <section
+                id="rilisan"
+                class="soft navy-band releases-showcase reveal-item"
+            >
+                <div class="release-music-overlay" aria-hidden="true">
+                    <Music2 class="music-note note-one" /><Music2
+                        class="music-note note-two"
+                    /><Music2 class="music-note note-three" />
+                    <div class="sound-orbit"></div>
+                    <div class="equalizer-strip">
+                        <i
+                            v-for="n in 22"
+                            :key="n"
+                            :style="{ height: `${8 + ((n * 7) % 30)}px` }"
+                        ></i>
+                    </div>
+                </div>
+                <div class="wrap release-content">
+                    <div class="section-title">
+                        <div>
+                            <span>RILIS TERBARU</span>
+                            <h2>Latest Releases</h2>
+                        </div>
+                        <a href="#">Lihat Semua <ArrowRight :size="16" /></a>
+                    </div>
+                    <div class="release-grid">
+                        <RouterLink
+                            v-for="r in releases"
+                            :key="r.slug"
+                            class="release-card"
+                            :to="`/rilisan/${r.slug}`"
+                            ><div>
+                                <img
+                                    :src="r.image"
+                                    :alt="`Sampul ${r.title}`"
+                                />
+                            </div>
+                            <div class="release-info">
+                                <h3>{{ r.title }}</h3>
+                                <p>{{ r.artist }}</p>
+                                <small>{{ r.genre }} · {{ r.year }}</small
+                                ><span class="play">▶</span>
+                            </div></RouterLink
+                        >
+                    </div>
+                </div>
+                <div
+                    class="release-wave release-wave-bottom"
+                    aria-hidden="true"
+                >
+                    <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+                        <path
+                            class="release-wave-accent"
+                            d="M0 52 C172 101 344 94 516 50 C696 4 844 11 1018 60 C1190 108 1328 98 1440 70 L1440 120 L0 120 Z"
+                        />
+                        <path
+                            class="release-wave-surface"
+                            d="M0 70 C174 112 346 106 520 66 C700 25 848 31 1022 76 C1194 120 1330 112 1440 88 L1440 120 L0 120 Z"
+                        />
+                    </svg>
+                </div>
+            </section>
+            <section id="berita" class="wrap latest-news reveal-item">
+                <div class="news-bg-ornaments" aria-hidden="true">
+                    <Disc3 class="news-disc" /><Music2
+                        class="news-note news-note-one"
+                    /><Music2 class="news-note news-note-two" />
+                    <div class="news-equalizer">
+                        <i
+                            v-for="n in 34"
+                            :key="n"
+                            :style="{ height: `${8 + ((n * 13) % 45)}px` }"
+                        ></i>
+                    </div>
+                    <div class="news-signal-rings"></div>
+                </div>
+                <div class="section-title">
+                    <div>
+                        <span>KABAR 13 NADI</span>
+                        <h2>Berita Terbaru</h2>
+                    </div>
+                    <a href="#berita">Lihat Semua <ArrowRight :size="16" /></a>
+                </div>
+                <div class="news-grid">
+                    <RouterLink
+                        v-for="(item, i) in news"
+                        :key="item.slug"
+                        :to="`/berita/${item.slug}`"
+                        class="news-card"
+                        ><div class="news-image">
+                            <img :src="item.image" :alt="item.title" /><span
+                                >0{{ i + 1 }}</span
+                            >
+                            <div class="news-category">{{ item.category }}</div>
+                        </div>
+                        <div class="news-body">
+                            <small>{{ item.date }}</small>
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.excerpt }}</p>
+                            <b
+                                >Baca Selengkapnya <ArrowRight :size="15"
+                            /></b></div
+                    ></RouterLink>
+                </div>
+            </section>
+            <section
+                id="galeri"
+                class="gallery-section concept-gallery media-showcase reveal-item"
+            >
+                <div class="media-bg-ornaments" aria-hidden="true">
+                    <Music2 class="media-note media-note-one" /><Music2
+                        class="media-note media-note-two"
+                    /><Disc3 class="media-disc" />
+                    <div class="media-equalizer">
+                        <i
+                            v-for="n in 32"
+                            :key="n"
+                            :style="{ height: `${7 + ((n * 13) % 42)}px` }"
+                        ></i>
+                    </div>
+                </div>
+                <div class="wrap">
+                    <div class="section-title media-title">
+                        <div>
+                            <span>GALERI 13 NADI</span>
+                            <h2>Moments in Sound</h2>
+                            <p>
+                                Menangkap energi panggung melalui foto dan
+                                cerita bergerak.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="media-gallery-layout">
+                        <div class="photo-gallery-panel">
+                            <div class="panel-heading">
+                                <span><Image :size="18" />Galeri Foto</span
+                                ><a class="panel-view-all" href="#galeri-foto"
+                                    >Lihat Semua Foto <ArrowRight :size="14"
+                                /></a>
+                            </div>
+                            <div id="galeri-foto" class="photo-mosaic">
+                                <figure
+                                    v-for="(g, i) in gallery.slice(0, 4)"
+                                    :key="i"
+                                >
+                                    <img
+                                        :src="g"
+                                        :alt="`Momen panggung ${i + 1}`"
+                                    />
+                                    <figcaption>
+                                        <span>0{{ i + 1 }}</span
+                                        ><b>{{
+                                            [
+                                                "Energi Penonton",
+                                                "Sorot Panggung",
+                                                "Nada yang Hidup",
+                                                "Di Balik Cahaya",
+                                            ][i]
+                                        }}</b>
+                                    </figcaption>
+                                </figure>
+                            </div>
+                        </div>
+                        <div class="video-gallery-panel">
+                            <div class="panel-heading">
+                                <span><Film :size="18" />Galeri Video</span
+                                ><a class="panel-view-all" href="#galeri-video"
+                                    >Lihat Semua Video <ArrowRight :size="14"
+                                /></a>
+                            </div>
+                            <div id="galeri-video" class="video-list">
+                                <button
+                                    v-for="(video, i) in videoGallery"
+                                    :key="video.title"
+                                    class="video-card"
+                                    @click="selectedVideo = i"
+                                >
+                                    <img
+                                        :src="video.image"
+                                        :alt="video.title"
+                                    /><span class="video-overlay"></span
+                                    ><span class="video-play">▶</span
+                                    ><span class="video-duration">{{
+                                        video.duration
+                                    }}</span
+                                    ><span class="video-copy"
+                                        ><small>VIDEO 0{{ i + 1 }}</small
+                                        ><b>{{ video.title }}</b></span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="kolaborasi" class="cta concept-cta">
+                <div class="handshake"><Handshake :size="58" /></div>
+                <div>
+                    <h2>Mari Berkolaborasi</h2>
+                    <p>
+                        Kami selalu terbuka untuk kolaborasi kreatif.<br />Jika
+                        kamu memiliki ide, karya, atau proyek,<br />ayo wujudkan
+                        bersama 13 Nadi Records.
+                    </p>
+                </div>
+                <a class="button" href="mailto:hello@13nadi.com"
+                    >Hubungi Kami <ArrowRight :size="18"
+                /></a>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'releases'"
+            class="content-page page-releases"
+        >
+            <section class="inner-hero">
+                <div class="wrap">
+                    <span>DISKOGRAFI 13 NADI</span>
+                    <h1>Rilis Musik</h1>
+                    <p>
+                        Karya terbaru dari musisi 13 Nadi—setiap rilisan membawa
+                        karakter, cerita, dan warna yang berbeda.
+                    </p>
+                </div>
+            </section>
+            <section class="wrap page-section">
+                <div class="page-heading">
+                    <div>
+                        <span>JELAJAHI KARYA</span>
+                        <h2>Semua Rilisan</h2>
+                    </div>
+                    <small>{{ releases.length }} rilisan pilihan</small>
+                </div>
+                <div class="release-grid page-release-grid">
+                    <RouterLink
+                        v-for="r in releases"
+                        :key="r.slug"
+                        class="release-card"
+                        :to="`/rilisan/${r.slug}`"
+                        ><div>
+                            <img :src="r.image" :alt="`Sampul ${r.title}`" />
+                        </div>
+                        <div class="release-info">
+                            <h3>{{ r.title }}</h3>
+                            <p>{{ r.artist }}</p>
+                            <small>{{ r.genre }} · {{ r.year }}</small
+                            ><span class="play">▶</span>
+                        </div></RouterLink
+                    >
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'news-list'"
+            class="content-page page-news"
+        >
+            <section class="inner-hero">
+                <div class="wrap">
+                    <span>KABAR & CERITA</span>
+                    <h1>Berita Musik</h1>
+                    <p>
+                        Ikuti kabar rilisan, perjalanan artis, sesi studio, dan
+                        kolaborasi terbaru dari ekosistem 13 Nadi.
+                    </p>
+                </div>
+            </section>
+            <section class="wrap page-section">
+                <div class="page-heading">
+                    <div>
+                        <span>UPDATE TERBARU</span>
+                        <h2>Semua Berita</h2>
+                    </div>
+                    <small>{{ news.length }} artikel</small>
+                </div>
+                <div class="news-grid">
+                    <RouterLink
+                        v-for="(item, i) in news"
+                        :key="item.slug"
+                        :to="`/berita/${item.slug}`"
+                        class="news-card"
+                        ><div class="news-image">
+                            <img :src="item.image" :alt="item.title" /><span
+                                >0{{ i + 1 }}</span
+                            >
+                            <div class="news-category">{{ item.category }}</div>
+                        </div>
+                        <div class="news-body">
+                            <small>{{ item.date }}</small>
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.excerpt }}</p>
+                            <b
+                                >Baca Selengkapnya <ArrowRight :size="15"
+                            /></b></div
+                    ></RouterLink>
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'photos'"
+            class="content-page page-photos"
+        >
+            <section class="inner-hero">
+                <div class="wrap">
+                    <span>GALERI FOTO</span>
+                    <h1>Moments in Sound</h1>
+                    <p>
+                        Energi panggung, ekspresi artis, dan momen di balik
+                        layar yang terekam dalam satu cerita visual.
+                    </p>
+                </div>
+            </section>
+            <section class="wrap page-section">
+                <div class="page-heading">
+                    <div>
+                        <span>ARSIP VISUAL</span>
+                        <h2>Galeri Foto</h2>
+                    </div>
+                    <small>{{ gallery.length }} momen</small>
+                </div>
+                <div class="photo-page-grid">
+                    <figure v-for="(g, i) in gallery" :key="g">
+                        <img :src="g" :alt="`Momen musik ${i + 1}`" />
+                        <figcaption>
+                            <span>0{{ i + 1 }}</span
+                            ><b>{{
+                                [
+                                    "Energi Penonton",
+                                    "Sorot Panggung",
+                                    "Nada yang Hidup",
+                                    "Di Balik Cahaya",
+                                    "Cerita Sang Artis",
+                                ][i]
+                            }}</b>
+                        </figcaption>
+                    </figure>
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'videos'"
+            class="content-page page-videos"
+        >
+            <section class="inner-hero">
+                <div class="wrap">
+                    <span>GALERI VIDEO</span>
+                    <h1>Stories in Motion</h1>
+                    <p>
+                        Nikmati pertunjukan, proses kreatif, dan kisah di balik
+                        musik melalui rangkaian video pilihan.
+                    </p>
+                </div>
+            </section>
+            <section class="wrap page-section">
+                <div class="page-heading">
+                    <div>
+                        <span>13 NADI VIDEO</span>
+                        <h2>Video Terbaru</h2>
+                    </div>
+                    <small>{{ videoGallery.length }} video</small>
+                </div>
+                <div class="video-page-grid">
+                    <button
+                        v-for="(video, i) in videoGallery"
+                        :key="video.title"
+                        class="video-page-card"
+                        @click="selectedVideo = i"
+                    >
+                        <img :src="video.image" :alt="video.title" /><span
+                            class="video-overlay"
+                        ></span
+                        ><span class="video-play">▶</span
+                        ><span class="video-duration">{{ video.duration }}</span
+                        ><span class="video-copy"
+                            ><small>VIDEO 0{{ i + 1 }}</small
+                            ><b>{{ video.title }}</b></span
+                        >
+                    </button>
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'collaboration'"
+            class="content-page page-collaboration"
+        >
+            <section class="inner-hero">
+                <div class="wrap">
+                    <span>BERKARYA BERSAMA</span>
+                    <h1>Kolaborasi Kreatif</h1>
+                    <p>
+                        Dari ide pertama hingga karya bertemu audiens—kami hadir
+                        sebagai partner kreatif yang tumbuh bersama Anda.
+                    </p>
+                    <a class="button" href="mailto:hello@13nadi.com"
+                        >Mulai Kolaborasi <ArrowRight :size="17"
+                    /></a>
+                </div>
+            </section>
+            <section class="wrap page-section">
+                <div class="page-heading">
+                    <div>
+                        <span>RUANG KOLABORASI</span>
+                        <h2>Apa yang Bisa Kita Bangun?</h2>
+                    </div>
+                </div>
+                <div class="collaboration-grid">
+                    <article>
+                        <Disc3 /><span>01</span>
+                        <h3>Artist Development</h3>
+                        <p>
+                            Pengembangan identitas, arah musikal, dan strategi
+                            karya yang kuat.
+                        </p>
+                    </article>
+                    <article>
+                        <Music2 /><span>02</span>
+                        <h3>Music Production</h3>
+                        <p>
+                            Pendampingan penulisan, rekaman, hingga produksi
+                            siap rilis.
+                        </p>
+                    </article>
+                    <article>
+                        <Activity /><span>03</span>
+                        <h3>Digital Distribution</h3>
+                        <p>
+                            Distribusi dan kampanye agar karya menjangkau
+                            audiens yang tepat.
+                        </p>
+                    </article>
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'about'"
+            class="content-page page-about"
+        >
+            <section class="inner-hero">
+                <div class="wrap">
+                    <span>TENTANG KAMI</span>
+                    <h1>13 Nadi Musik</h1>
+                    <p>
+                        Partner kreatif untuk musisi dan content creator yang
+                        ingin fokus berkarya serta membawa ide mereka lebih
+                        jauh.
+                    </p>
+                </div>
+            </section>
+            <section class="wrap about-page-section">
+                <div>
+                    <span class="eyebrow">CERITA 13 NADI</span>
+                    <h2>Dari label musik menjadi creative partner.</h2>
+                    <p>
+                        Berawal dari label musik digital di tahun 2019,
+                        13NadiMusik kini berevolusi menjadi “Digital content
+                        creator partner”. Banyak content creator memiliki
+                        potensi menghadirkan konten berkualitas, namun
+                        terkendala hal teknis. Kami hadir memberikan solusi.
+                    </p>
+                    <p>
+                        Ide orisinal dan bakat kuat perlu didukung pemahaman
+                        algoritma platform, kualitas audio visual, serta digital
+                        marketing. 13 Nadi menjadi partner agar kreator dapat
+                        lebih fokus mewujudkan karya yang menghibur,
+                        mengedukasi, dan menginspirasi.
+                    </p>
+                    <div class="about-values">
+                        <b>Lebih Dekat.</b><b>Lebih Hidup.</b
+                        ><b>Lebih Bermakna.</b>
+                    </div>
+                </div>
+                <div class="about-page-photo">
+                    <img
+                        :src="aboutImage || gallery[1]"
+                        alt="Panggung 13 Nadi"
+                    /><Music2 />
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="
+                ['release', 'artist', 'news'].includes(String(route.name)) &&
+                publicLoading
+            "
+            class="detail-loading wrap"
+            aria-live="polite"
+        >
+            <span class="detail-loading-disc"><Disc3 /></span>
+            <div>
+                <span class="eyebrow">MEMUAT KONTEN</span>
+                <h1>Menyiapkan cerita untuk Anda...</h1>
+                <p>Mohon tunggu sebentar.</p>
+            </div>
+        </main>
+        <main
+            v-else-if="route.name === 'release' && currentRelease"
+            class="release-detail wrap"
+        >
+            <section class="release-overview">
+                <div class="release-cover-frame">
+                    <span class="cover-kicker"
+                        ><Disc3 :size="14" /> COVER ART</span
+                    ><img
+                        class="detail-cover"
+                        :src="currentRelease.image"
+                        :alt="`Sampul ${currentRelease.title}`"
+                    /><span class="cover-caption"
+                        >13 NADI MUSIK · OFFICIAL RELEASE</span
+                    >
+                </div>
+                <article class="release-copy">
+                    <div
+                        v-if="
+                            currentRelease.genre ||
+                            currentReleaseMusicGenre ||
+                            currentRelease.year
+                        "
+                        class="release-meta"
+                    >
+                        <span v-if="currentRelease.genre"
+                            ><Disc3 :size="15" />{{
+                                currentRelease.genre
+                            }}</span
+                        ><span v-if="currentReleaseMusicGenre"
+                            ><Music2 :size="15" />{{
+                                currentReleaseMusicGenre
+                            }}</span
+                        ><span v-if="currentRelease.year"
+                            ><Activity :size="15" />{{
+                                currentRelease.year
+                            }}</span
+                        >
+                    </div>
+                    <span v-else class="eyebrow">RILISAN 13 NADI</span>
+                    <h1>{{ currentRelease.title }}</h1>
+                    <h2>{{ currentRelease.artist }}</h2>
+                    <div class="release-description">
+                        <small>TENTANG RILISAN</small>
+                        <p>
+                            {{
+                                currentReleaseDescription ||
+                                "Informasi lengkap rilisan ini akan segera diperbarui."
+                            }}
+                        </p>
+                    </div>
+                </article>
+            </section>
+            <section
+                v-if="spotifyEmbedUrl || youtubeEmbedUrl"
+                class="release-media"
+            >
+                <div class="release-media-heading">
+                    <span><Music2 :size="18" /> DENGARKAN &amp; TONTON</span>
+                    <h3>Rasakan rilisan dalam suara dan visual.</h3>
+                    <p>
+                        Pilih platform favorit Anda untuk menikmati karya
+                        terbaru 13 Nadi Musik.
+                    </p>
+                </div>
+                <div class="release-media-grid">
+                    <section
+                        v-if="spotifyEmbedUrl"
+                        class="spotify-player"
+                        aria-label="Spotify web player"
+                    >
+                        <div class="spotify-player-heading">
+                            <span><Music2 :size="18" /></span>
+                            <div>
+                                <small>DENGARKAN DI SPOTIFY</small
+                                ><b
+                                    >{{ currentRelease.title }} ·
+                                    {{ currentRelease.artist }}</b
+                                >
+                            </div>
+                        </div>
+                        <iframe
+                            :src="spotifyEmbedUrl"
+                            :title="`Spotify player ${currentRelease.title}`"
+                            width="100%"
+                            height="152"
+                            frameborder="0"
+                            allowfullscreen=""
+                            allow="
+                                autoplay;
+                                clipboard-write;
+                                encrypted-media;
+                                fullscreen;
+                                picture-in-picture;
+                            "
+                            loading="lazy"
+                        ></iframe
+                        ><a
+                            v-if="currentRelease.externalUrl"
+                            class="media-link spotify-link"
+                            :href="currentRelease.externalUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            >Buka di Spotify <ExternalLink :size="15"
+                        /></a>
+                    </section>
+                    <section
+                        v-if="youtubeEmbedUrl"
+                        class="youtube-player"
+                        aria-label="Video YouTube rilisan"
+                    >
+                        <div class="youtube-player-heading">
+                            <span>▶</span>
+                            <div>
+                                <small>VIDEO MUSIK</small
+                                ><b
+                                    >{{ currentRelease.title }} ·
+                                    {{ currentRelease.artist }}</b
+                                >
+                            </div>
+                            <a
+                                :href="currentReleaseYoutubeUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                >Buka YouTube <ExternalLink :size="14"
+                            /></a>
+                        </div>
+                        <div class="youtube-frame">
+                            <iframe
+                                :src="youtubeEmbedUrl"
+                                :title="`Video YouTube ${currentRelease.title}`"
+                                frameborder="0"
+                                allow="
+                                    accelerometer;
+                                    autoplay;
+                                    clipboard-write;
+                                    encrypted-media;
+                                    gyroscope;
+                                    picture-in-picture;
+                                    web-share;
+                                "
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                                loading="lazy"
+                            ></iframe>
+                        </div>
+                    </section>
+                </div>
+            </section>
+        </main>
+        <main
+            v-else-if="route.name === 'artist' && currentArtist"
+            class="detail wrap"
+        >
+            <img class="detail-cover portrait" :src="currentArtist.image" />
+            <div>
+                <span class="eyebrow">ARTIS 13 NADI</span>
+                <h1>{{ currentArtist.name }}</h1>
+                <h2>{{ currentArtist.role }}</h2>
+                <p>
+                    {{ currentArtist.name }} menghadirkan karya yang personal
+                    dan berani. Bersama 13 Nadi, setiap lagu menjadi ruang
+                    bertemu antara musisi dan pendengarnya.
+                </p>
+                <h3>Diskografi</h3>
+                <p>Pulang Perlahan · 2026</p>
+            </div>
+        </main>
+        <main
+            v-else-if="route.name === 'news' && currentNews"
+            class="detail news-detail wrap"
+        >
+            <img
+                class="detail-cover"
+                :src="currentNews.image"
+                :alt="currentNews.title"
+            />
+            <div>
+                <span class="eyebrow"
+                    >{{ currentNews.category }} · {{ currentNews.date }}</span
+                >
+                <h1>{{ currentNews.title }}</h1>
+                <p>{{ currentNews.excerpt }}</p>
+                <p>
+                    13 Nadi menghadirkan cerita di balik musik, panggung, dan
+                    proses kreatif para artis. Setiap kabar menjadi ruang untuk
+                    mengenal karya secara lebih dekat dan bermakna.
+                </p>
+                <RouterLink class="button" to="/#berita"
+                    ><ArrowRight :size="17" />Kembali ke Berita</RouterLink
+                >
+            </div>
+        </main>
+        <main
+            v-else-if="['privacy', 'terms'].includes(String(route.name))"
+            class="legal wrap"
+        >
+            <span class="eyebrow">13 NADI RECORDS</span>
+            <h1>
+                {{
+                    route.name === "privacy"
+                        ? "Kebijakan Privasi"
+                        : "Syarat & Ketentuan"
+                }}
+            </h1>
+            <p>Terakhir diperbarui: 22 Agustus 2026</p>
+            <h2>Informasi umum</h2>
+            <p>
+                Kami menghargai privasi pengunjung dan hanya memproses informasi
+                yang diperlukan untuk menyediakan layanan dan meningkatkan
+                pengalaman pengguna.
+            </p>
+            <h2>Penggunaan layanan</h2>
+            <p>
+                Dengan menggunakan situs ini, Anda menyetujui penggunaan yang
+                wajar dan menghormati hak cipta setiap karya.
+            </p>
+        </main>
+        <main v-else class="legal wrap">
+            <span class="eyebrow">KONTEN TIDAK DITEMUKAN</span>
+            <h1>Halaman belum tersedia</h1>
+            <p>
+                Konten yang Anda cari mungkin sudah dipindahkan, dinonaktifkan,
+                atau belum diterbitkan.
+            </p>
+            <RouterLink class="button" to="/">Kembali ke Beranda</RouterLink>
+        </main>
+        <div
+            v-if="selectedVideo !== null"
+            class="video-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Preview video"
+            @click.self="selectedVideo = null"
+        >
+            <div class="video-modal-card">
+                <button
+                    aria-label="Tutup preview"
+                    @click="selectedVideo = null"
+                >
+                    <X />
+                </button>
+                <div class="video-modal-frame">
+                    <img
+                        :src="videoGallery[selectedVideo].image"
+                        :alt="videoGallery[selectedVideo].title"
+                    /><span class="modal-play">▶</span>
+                    <div class="modal-bars">
+                        <i
+                            v-for="n in 24"
+                            :key="n"
+                            :style="{ height: `${8 + ((n * 7) % 32)}px` }"
+                        ></i>
+                    </div>
+                </div>
+                <small>13 NADI VIDEO PREMIERE</small>
+                <h3>{{ videoGallery[selectedVideo].title }}</h3>
+                <p>
+                    Preview visual pertunjukan dan perjalanan kreatif 13 Nadi
+                    Musik & Entertainment.
+                </p>
+            </div>
+        </div>
+        <footer>
+            <div class="wrap footer-grid">
+                <div>
+                    <RouterLink
+                        to="/"
+                        class="public-brand footer-brand"
+                        aria-label="13 Nadi Musik & Entertainment"
+                        ><img
+                            src="/logo.png"
+                            alt="13 Nadi Musik & Entertainment"
+                    /></RouterLink>
+                    <p>Nada yang Menghubungkan Cerita.</p>
+                </div>
+                <div>
+                    <b>Navigasi</b><RouterLink to="/">Beranda</RouterLink
+                    ><RouterLink to="/rilis">Rilis</RouterLink
+                    ><RouterLink to="/berita">Berita</RouterLink
+                    ><RouterLink to="/foto">Foto</RouterLink
+                    ><RouterLink to="/video">Video</RouterLink
+                    ><RouterLink to="/kolaborasi">Kolaborasi</RouterLink
+                    ><RouterLink to="/tentang">Tentang</RouterLink>
+                </div>
+                <div>
+                    <b>Ikuti Kami</b><a href="#">Spotify</a
+                    ><a href="#">Apple Music</a><a href="#">YouTube</a
+                    ><a href="#">Instagram</a>
+                </div>
+                <div>
+                    <b>Hubungi Kami</b
+                    ><a href="mailto:hello@13nadirecords.com"
+                        >hello@13nadirecords.com</a
+                    ><a href="tel:+6281234567890">+62 812-3456-7890</a
+                    ><span>Jakarta, Indonesia</span>
+                </div>
+            </div>
+            <div class="wrap copyright">
+                © 2026 13 Nadi Records. All rights reserved.
+            </div>
+        </footer>
+    </div>
 </template>
