@@ -454,7 +454,7 @@ const modules = [
     ["Berita", "berita", Activity],
     ["Galeri Foto", "foto", Image],
     ["Galeri Video", "video", Film],
-    ["MUGEN", "mugen", ClipboardList],
+    ["MUGGEN", "mugen", ClipboardList],
     ["Pengaturan", "settings", Settings],
     ["Activity Log", "activity", Activity],
 ] as const;
@@ -577,7 +577,7 @@ const loadMugenForm = async () => {
         const payload: any = await apiRequest("/public/mugen-form");
         mugenFields.value = payload.data || [];
         mugenAnswers.value = Object.fromEntries(mugenFields.value.map((field) => [field.key, field.type === "checkbox" ? false : ""]));
-    } catch (e: any) { mugenError.value = e.message || "Form MUGEN gagal dimuat."; }
+    } catch (e: any) { mugenError.value = e.message || "Form MUGGEN gagal dimuat."; }
 };
 const loadMugenAdmin = async () => {
     adminLoading.value = true;
@@ -585,7 +585,7 @@ const loadMugenAdmin = async () => {
         const payload: any = await apiRequest("/admin/mugen", {}, true);
         mugenFields.value = payload.data.fields || [];
         mugenSubmissions.value = payload.data.submissions?.data || [];
-    } catch (e: any) { flash(e.message || "Data MUGEN gagal dimuat."); }
+    } catch (e: any) { flash(e.message || "Data MUGGEN gagal dimuat."); }
     finally { adminLoading.value = false; }
 };
 const submitMugen = async () => {
@@ -602,7 +602,7 @@ const saveMugenFields = async () => {
     try {
         const payload: any = await apiRequest("/admin/mugen/fields", { method: "PUT", body: JSON.stringify({ fields: mugenFields.value }) }, true);
         mugenFields.value = payload.data.fields || [];
-        flash("Pengaturan form MUGEN disimpan.");
+        flash("Pengaturan form MUGGEN disimpan.");
     } catch (e: any) { mugenError.value = e.message || "Pengaturan gagal disimpan."; }
     finally { mugenSaving.value = false; }
 };
@@ -1451,14 +1451,14 @@ watch(
             </header>
             <div v-if="currentModule === 'mugen'" class="admin-content mugen-admin">
                 <div class="editor-heading">
-                    <div><span class="eyebrow">EVENT REGISTRATION</span><h2>Kelola Form MUGEN</h2><p>Atur pertanyaan dan lihat pendaftar yang masuk dari halaman MUGEN.</p></div>
+                    <div><span class="eyebrow">EVENT REGISTRATION</span><h2>Kelola Form MUGGEN</h2><p>Atur pertanyaan dan lihat pendaftar yang masuk dari halaman MUGGEN.</p></div>
                     <RouterLink class="button" to="/mugen"><Eye :size="17" />Lihat Form Publik</RouterLink>
                 </div>
                 <div class="mugen-tabs">
                     <button :class="{ active: mugenAdminTab === 'submissions' }" @click="mugenAdminTab = 'submissions'">Pendaftar ({{ mugenSubmissions.length }})</button>
                     <button :class="{ active: mugenAdminTab === 'fields' }" @click="mugenAdminTab = 'fields'">Pengaturan Form</button>
                 </div>
-                <div v-if="adminLoading" class="editor-card empty"><Activity /><h3>Memuat data MUGEN...</h3></div>
+                <div v-if="adminLoading" class="editor-card empty"><Activity /><h3>Memuat data MUGGEN...</h3></div>
                 <section v-else-if="mugenAdminTab === 'submissions'" class="editor-card">
                     <div v-if="!mugenSubmissions.length" class="empty"><ClipboardList /><h3>Belum ada pendaftar</h3><p>Submission baru akan muncul di sini.</p></div>
                     <div v-else class="mugen-submissions">
@@ -2475,7 +2475,7 @@ watch(
                 ><RouterLink to="/tentang" @click="menuOpen = false"
                     >Tentang</RouterLink
                 ><RouterLink to="/mugen" @click="menuOpen = false"
-                    >MUGEN</RouterLink
+                    >MUGGEN</RouterLink
                 >
             </nav>
         </header>
@@ -2959,20 +2959,20 @@ watch(
                 <div class="mugen-hero-wave mugen-hero-wave-right" aria-hidden="true"><i v-for="n in 7" :key="n"></i></div>
                 <div class="wrap mugen-hero-copy">
                     <div class="mugen-hero-mark" aria-hidden="true"><i v-for="n in 5" :key="n"></i></div>
-                    <h1>MUGEN</h1>
+                    <h1>MUGGEN</h1>
                     <h2>Artist Registration</h2>
-                    <p>Bring your sound to Bogor. MUGEN is an open invitation for artists and bands ready to share their next live moment.</p>
+                    <p>Bring your sound to Bogor. MUGGEN is an open invitation for artists and bands ready to share their next live moment.</p>
                     <a class="mugen-hero-cta" href="#mugen-form">Register your act <ArrowRight :size="18" /></a>
                 </div>
             </section>
-            <section class="wrap mugen-event-strip" aria-label="Informasi acara MUGEN">
+            <section class="wrap mugen-event-strip" aria-label="Informasi acara MUGGEN">
                 <article><MapPin :size="28" /><div><b>Bogor, Indonesia</b><span>Rooted in the local music scene.</span></div></article>
                 <article><Mic2 :size="28" /><div><b>Artist / Band Call</b><span>All genres and independent voices welcome.</span></div></article>
                 <article><Radio :size="28" /><div><b>Review &amp; Connect</b><span>Our team will reach out after review.</span></div></article>
             </section>
             <section class="wrap mugen-form-section">
-                <div class="mugen-form-copy"><span class="mugen-form-count">01 — Registration</span><h2>Make your next stage <em>count.</em></h2><p>Share your details with us. Each submission is reviewed by the MUGEN team, and we will reach out using the contact you provide.</p><div class="mugen-form-note"><Music2 :size="20" /><span>Required fields help us learn the essentials about your act.</span></div></div>
-                <div v-if="mugenSuccess" class="mugen-success"><CheckCircle2 /><h2>Thank you!</h2><p>Your MUGEN registration has been submitted successfully.</p><button class="button" @click="mugenSuccess = false; loadMugenForm()">Submit another artist</button></div>
+                <div class="mugen-form-copy"><span class="mugen-form-count">01 — Registration</span><h2>Make your next stage <em>count.</em></h2><p>Share your details with us. Each submission is reviewed by the MUGGEN team, and we will reach out using the contact you provide.</p><div class="mugen-form-note"><Music2 :size="20" /><span>Required fields help us learn the essentials about your act.</span></div></div>
+                <div v-if="mugenSuccess" class="mugen-success"><CheckCircle2 /><h2>Thank you!</h2><p>Your MUGGEN registration has been submitted successfully.</p><button class="button" @click="mugenSuccess = false; loadMugenForm()">Submit another artist</button></div>
                 <form v-else id="mugen-form" class="mugen-public-form" @submit.prevent="submitMugen">
                     <div class="mugen-form-heading"><span>Tell us about your sound</span><small>Fields marked <b>*</b> are required</small></div>
                     <label v-for="field in mugenFields" :key="field.key" class="field" :class="{ 'field-full': ['textarea','radio','checkbox'].includes(field.type) }">
@@ -3560,7 +3560,7 @@ watch(
                     ><RouterLink to="/foto">Foto</RouterLink
                     ><RouterLink to="/video">Video</RouterLink
                     ><RouterLink to="/tentang">Tentang</RouterLink
-                    ><RouterLink to="/mugen">MUGEN</RouterLink>
+                    ><RouterLink to="/mugen">MUGGEN</RouterLink>
                 </div>
                 <div class="footer-socials">
                     <b>Ikuti Kami</b>

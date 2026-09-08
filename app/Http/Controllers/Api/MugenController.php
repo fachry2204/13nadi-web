@@ -36,7 +36,7 @@ class MugenController extends Controller
         $allowed = $fields->pluck('key')->all();
         $answers = collect($validated['answers'])->only($allowed)->all();
         $submission = MugenSubmission::create(['answers' => $answers, 'ip_address' => $request->ip()]);
-        return response()->json(['data' => ['id' => $submission->id], 'message' => 'Pendaftaran MUGEN berhasil dikirim.'], 201);
+        return response()->json(['data' => ['id' => $submission->id], 'message' => 'Pendaftaran MUGGEN berhasil dikirim.'], 201);
     }
 
     public function adminIndex()

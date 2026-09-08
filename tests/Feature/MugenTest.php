@@ -26,7 +26,7 @@ class MugenTest extends TestCase
 
         $this->postJson('/api/v1/public/mugen', ['answers' => $answers])
             ->assertCreated()
-            ->assertJsonPath('message', 'Pendaftaran MUGEN berhasil dikirim.');
+            ->assertJsonPath('message', 'Pendaftaran MUGGEN berhasil dikirim.');
 
         $this->assertDatabaseCount('mugen_submissions', 1);
     }
