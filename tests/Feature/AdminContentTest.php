@@ -83,4 +83,27 @@ class AdminContentTest extends TestCase
                 'link_enabled' => true,
             ]);
     }
+
+    public function test_admin_can_create_photo_album_with_multiple_images(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson('/api/v1/admin/photo', [
+            'title' => 'Live Session Bogor',
+            'slug' => 'live-session-bogor',
+            'image_url' => '/uploads/live-session-cover.jpg',
+            'metadata' => [
+                'images' => [
+                    '/uploads/live-session-cover.jpg',
+                    '/uploads/live-session-backstage.jpg',
+                ],
+            ],
+            'is_active' => true,
+        ])->assertCreated();
+
+        $this->assertSame([
+            '/uploads/live-session-cover.jpg',
+            '/uploads/live-session-backstage.jpg',
+        ], $response->json('data.metadata.images'));
+    }
 }

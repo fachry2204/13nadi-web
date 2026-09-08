@@ -11,6 +11,7 @@ import {
     ExternalLink,
     Eye,
     Film,
+    ClipboardList,
     GripVertical,
     Handshake,
     Image,
@@ -18,9 +19,12 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    MapPin,
+    Mic2,
     Music2,
     Pencil,
     Plus,
+    Radio,
     Search,
     Settings,
     Trash2,
@@ -58,7 +62,12 @@ const contentSaving = ref(false),
     contentError = ref("");
 const imageUploading = ref<"slider" | "content" | "">(""),
     imageUploadError = ref("");
+const albumImages = ref<string[]>([]);
 const publicLoading = ref(true);
+type MugenField = { id?: number; key: string; label: string; type: string; options: string[]; placeholder?: string; is_required: boolean; is_active: boolean };
+const mugenFields = ref<MugenField[]>([]), mugenSubmissions = ref<any[]>([]);
+const mugenAnswers = ref<Record<string, string | boolean>>({});
+const mugenSaving = ref(false), mugenError = ref(""), mugenSuccess = ref(false), mugenAdminTab = ref<"submissions" | "fields">("submissions");
 const releaseGenres = [
     "Pop",
     "Indie Pop",
@@ -155,7 +164,6 @@ const heroSlides = reactive([
         button: "Dengarkan Sekarang",
         link: "#rilisan",
         label: "Featured Story",
-        track: "Pulang Perlahan — Arunika Senja",
         image: slide1Image,
         imageClass: "hero-photo-one",
     },
@@ -165,7 +173,6 @@ const heroSlides = reactive([
         button: "Lihat Rilisan Baru",
         link: "#rilisan",
         label: "New Release",
-        track: "Kota Hujan — Ruang Tengah",
         image: slide2Image,
         imageClass: "hero-photo-two",
     },
@@ -213,6 +220,12 @@ const programSaving = ref(false),
 const activeSlide = ref(0),
     slidePaused = ref(false),
     scrollProgress = ref(0);
+const activeHeroTitle = computed(() => {
+    const title = heroSlides[activeSlide.value]?.title?.join(" ") || "";
+    return /^temukan suara yang baru hari ini$/i.test(title.trim())
+        ? ["Temukan Suara", "Yang Baru Hari Ini"]
+        : heroSlides[activeSlide.value]?.title || [];
+});
 const activeProgram = ref(0),
     programPaused = ref(false);
 let slideTimer: number | undefined,
@@ -249,7 +262,10 @@ onMounted(() => {
         loadSliderForm();
     else if (["content-create", "content-edit"].includes(String(route.name)))
         loadContentForm();
-    else if (route.name !== "login") loadAllPublicContent();
+    else if (route.name !== "login") {
+        loadAllPublicContent();
+        if (route.name === "mugen") loadMugenForm();
+    }
     requestAnimationFrame(() => {
         const items = document.querySelectorAll(".reveal-item");
         revealObserver = new IntersectionObserver(
@@ -385,6 +401,30 @@ const gallery = reactive([
     "https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=900&q=85",
     "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85",
 ]);
+type PhotoAlbum = {
+    id?: number;
+    slug: string;
+    title: string;
+    description: string;
+    cover: string;
+    images: string[];
+};
+const photoAlbums = reactive<PhotoAlbum[]>([
+    {
+        slug: "energi-panggung",
+        title: "Energi Panggung",
+        description: "Sorot lampu, keramaian, dan detik-detik yang menghidupkan pertunjukan.",
+        cover: gallery[0],
+        images: gallery.slice(0, 3),
+    },
+    {
+        slug: "cerita-di-balik-nada",
+        title: "Cerita di Balik Nada",
+        description: "Potret intim proses, ekspresi, dan orang-orang di balik musik.",
+        cover: gallery[3],
+        images: gallery.slice(3),
+    },
+]);
 const videoGallery = reactive([
     {
         title: "Live Session — Suara dari Panggung",
@@ -414,6 +454,7 @@ const modules = [
     ["Berita", "berita", Activity],
     ["Galeri Foto", "foto", Image],
     ["Galeri Video", "video", Film],
+    ["MUGEN", "mugen", ClipboardList],
     ["Pengaturan", "settings", Settings],
     ["Activity Log", "activity", Activity],
 ] as const;
@@ -531,6 +572,47 @@ const moduleType = () =>
             slider: "slider",
         }) as Record<string, string>
     )[currentModule.value] || currentModule.value;
+const loadMugenForm = async () => {
+    try {
+        const payload: any = await apiRequest("/public/mugen-form");
+        mugenFields.value = payload.data || [];
+        mugenAnswers.value = Object.fromEntries(mugenFields.value.map((field) => [field.key, field.type === "checkbox" ? false : ""]));
+    } catch (e: any) { mugenError.value = e.message || "Form MUGEN gagal dimuat."; }
+};
+const loadMugenAdmin = async () => {
+    adminLoading.value = true;
+    try {
+        const payload: any = await apiRequest("/admin/mugen", {}, true);
+        mugenFields.value = payload.data.fields || [];
+        mugenSubmissions.value = payload.data.submissions?.data || [];
+    } catch (e: any) { flash(e.message || "Data MUGEN gagal dimuat."); }
+    finally { adminLoading.value = false; }
+};
+const submitMugen = async () => {
+    mugenError.value = ""; mugenSaving.value = true;
+    try {
+        await apiRequest("/public/mugen", { method: "POST", body: JSON.stringify({ answers: mugenAnswers.value }) });
+        mugenSuccess.value = true;
+    } catch (e: any) { mugenError.value = e.message || "Pendaftaran gagal dikirim."; }
+    finally { mugenSaving.value = false; }
+};
+const addMugenField = () => mugenFields.value.push({ key: "", label: "Field Baru", type: "text", options: [], placeholder: "", is_required: false, is_active: true });
+const saveMugenFields = async () => {
+    mugenSaving.value = true; mugenError.value = "";
+    try {
+        const payload: any = await apiRequest("/admin/mugen/fields", { method: "PUT", body: JSON.stringify({ fields: mugenFields.value }) }, true);
+        mugenFields.value = payload.data.fields || [];
+        flash("Pengaturan form MUGEN disimpan.");
+    } catch (e: any) { mugenError.value = e.message || "Pengaturan gagal disimpan."; }
+    finally { mugenSaving.value = false; }
+};
+const removeMugenField = (index: number) => mugenFields.value.splice(index, 1);
+const changeMugenOptions = (field: MugenField, event: Event) => { field.options = (event.target as HTMLTextAreaElement).value.split("\n").map((x) => x.trim()).filter(Boolean); };
+const removeMugenSubmission = async (id: number) => {
+    if (!confirm("Hapus data pendaftar ini?")) return;
+    await apiRequest(`/admin/mugen/submissions/${id}`, { method: "DELETE" }, true);
+    await loadMugenAdmin(); flash("Data pendaftar dihapus.");
+};
 const loadAdminRows = async () => {
     if (route.name !== "admin" || !currentModule.value) {
         rows.value = [];
@@ -544,6 +626,7 @@ const loadAdminRows = async () => {
         await loadProgramEditor();
         return;
     }
+    if (currentModule.value === "mugen") { await loadMugenAdmin(); return; }
     adminLoading.value = true;
     try {
         const type = moduleType();
@@ -604,7 +687,6 @@ const loadPublicContent = async () => {
                     button: x.subtitle || "Dengarkan Sekarang",
                     link: x.external_url || "#rilisan",
                     label: "Featured Story",
-                    track: x.subtitle || "",
                     image:
                         x.image_url ||
                         heroSlides[i % heroSlides.length]?.image ||
@@ -659,12 +741,50 @@ const loadPublicContent = async () => {
                     image: x.image_url || "",
                 })),
             );
-        if (groups.photo?.length)
+        if (groups.photo?.length) {
+            const albumEntries = groups.photo.filter(
+                (x: any) =>
+                    Array.isArray(x.metadata?.images) &&
+                    x.metadata.images.length,
+            );
+            const legacyImages = groups.photo
+                .filter(
+                    (x: any) =>
+                        !Array.isArray(x.metadata?.images) ||
+                        !x.metadata.images.length,
+                )
+                .map((x: any) => x.image_url)
+                .filter(Boolean);
+            const albums = albumEntries
+                .map((x: any) => {
+                    const images = x.metadata.images.filter(Boolean);
+                    return {
+                        id: x.id,
+                        slug: x.slug || `album-${x.id}`,
+                        title: x.title || "Album Foto",
+                        description: x.description || "",
+                        cover: x.image_url || images[0] || "",
+                        images,
+                    };
+                })
+                .filter((album: PhotoAlbum) => album.images.length);
+            if (legacyImages.length) {
+                albums.push({
+                    slug: "arsip-foto-13-nadi",
+                    title: "Arsip Foto 13 Nadi",
+                    description:
+                        "Kumpulan momen pilihan dari panggung dan perjalanan kreatif 13 Nadi.",
+                    cover: legacyImages[0],
+                    images: legacyImages,
+                });
+            }
             gallery.splice(
                 0,
                 gallery.length,
-                ...groups.photo.map((x: any) => x.image_url).filter(Boolean),
+                ...albums.flatMap((album: PhotoAlbum) => album.images),
             );
+            photoAlbums.splice(0, photoAlbums.length, ...albums);
+        }
         if (groups.video?.length)
             videoGallery.splice(
                 0,
@@ -882,8 +1002,8 @@ const resetSliderForm = () => {
         title: "",
         subtitle: "",
         description: "",
-        image_url: "",
-        external_url: "",
+    image_url: "",
+    external_url: "",
         sort_order: rows.value.length,
         is_active: true,
     };
@@ -992,6 +1112,7 @@ const clearUpload = (target: "slider" | "content") => {
     imageUploadError.value = "";
 };
 const resetContentForm = () => {
+    albumImages.value = [];
     contentForm.value = {
         title: "",
         slug: "",
@@ -1045,6 +1166,11 @@ const loadContentForm = async () => {
                 link_enabled: Boolean(x.metadata?.link_enabled),
             },
         };
+        albumImages.value = Array.isArray(x.metadata?.images)
+            ? x.metadata.images.filter(Boolean)
+            : x.image_url
+              ? [x.image_url]
+              : [];
     } catch (e: any) {
         contentError.value = e.message || "Gagal memuat data.";
     } finally {
@@ -1055,6 +1181,10 @@ const saveContent = async () => {
     contentError.value = "";
     if (!contentForm.value.title.trim()) {
         contentError.value = "Judul wajib diisi.";
+        return;
+    }
+    if (currentModule.value === "foto" && !albumImages.value.length) {
+        contentError.value = "Tambahkan minimal satu foto ke album.";
         return;
     }
     contentSaving.value = true;
@@ -1074,6 +1204,10 @@ const saveContent = async () => {
                 ),
             ),
         };
+        if (currentModule.value === "foto") {
+            body.image_url = albumImages.value[0] || "";
+            body.metadata = { images: albumImages.value };
+        }
         await apiRequest(
             `/admin/${moduleType()}${editing ? `/${route.params.id}` : ""}`,
             { method: editing ? "PUT" : "POST", body: JSON.stringify(body) },
@@ -1091,6 +1225,26 @@ const saveContent = async () => {
         contentSaving.value = false;
     }
 };
+const uploadAlbumPhotos = async (files: FileList | null) => {
+    if (!files?.length) return;
+    imageUploadError.value = "";
+    const pending = Array.from(files);
+    if (pending.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024)) {
+        imageUploadError.value = "Gunakan JPG, PNG, atau WebP dengan ukuran maksimal 8 MB per foto.";
+        return;
+    }
+    imageUploading.value = "content";
+    try {
+        const uploaded = await Promise.all(pending.map(async (file) => (await uploadAdminImage(file)).data.url));
+        albumImages.value.push(...uploaded);
+        flash(`${uploaded.length} foto ditambahkan ke album.`);
+    } catch (e: any) {
+        imageUploadError.value = e.message || "Foto gagal diunggah.";
+    } finally {
+        imageUploading.value = "";
+    }
+};
+const removeAlbumPhoto = (index: number) => albumImages.value.splice(index, 1);
 const addRow = async () => {
     const type = moduleType();
     if (type === "slider") {
@@ -1195,7 +1349,10 @@ watch(
             ["content-create", "content-edit"].includes(String(route.name))
         )
             loadContentForm();
-        else if (route.name !== "login") loadAllPublicContent();
+        else if (route.name !== "login") {
+            loadAllPublicContent();
+            if (route.name === "mugen") loadMugenForm();
+        }
     },
 );
 </script>
@@ -1292,8 +1449,43 @@ watch(
                     <div><b>Nadiku Admin</b><small>Administrator</small></div>
                 </div>
             </header>
+            <div v-if="currentModule === 'mugen'" class="admin-content mugen-admin">
+                <div class="editor-heading">
+                    <div><span class="eyebrow">EVENT REGISTRATION</span><h2>Kelola Form MUGEN</h2><p>Atur pertanyaan dan lihat pendaftar yang masuk dari halaman MUGEN.</p></div>
+                    <RouterLink class="button" to="/mugen"><Eye :size="17" />Lihat Form Publik</RouterLink>
+                </div>
+                <div class="mugen-tabs">
+                    <button :class="{ active: mugenAdminTab === 'submissions' }" @click="mugenAdminTab = 'submissions'">Pendaftar ({{ mugenSubmissions.length }})</button>
+                    <button :class="{ active: mugenAdminTab === 'fields' }" @click="mugenAdminTab = 'fields'">Pengaturan Form</button>
+                </div>
+                <div v-if="adminLoading" class="editor-card empty"><Activity /><h3>Memuat data MUGEN...</h3></div>
+                <section v-else-if="mugenAdminTab === 'submissions'" class="editor-card">
+                    <div v-if="!mugenSubmissions.length" class="empty"><ClipboardList /><h3>Belum ada pendaftar</h3><p>Submission baru akan muncul di sini.</p></div>
+                    <div v-else class="mugen-submissions">
+                        <article v-for="entry in mugenSubmissions" :key="entry.id">
+                            <header><div><b>Pendaftaran #{{ entry.id }}</b><small>{{ new Date(entry.created_at).toLocaleString('id-ID') }}</small></div><button class="danger-icon" @click="removeMugenSubmission(entry.id)"><Trash2 :size="17" /></button></header>
+                            <dl><template v-for="field in mugenFields" :key="field.key"><div v-if="entry.answers[field.key] !== undefined"><dt>{{ field.label }}</dt><dd>{{ entry.answers[field.key] === true ? 'Yes' : entry.answers[field.key] === false ? 'No' : entry.answers[field.key] || '—' }}</dd></div></template></dl>
+                        </article>
+                    </div>
+                </section>
+                <form v-else class="mugen-field-list" @submit.prevent="saveMugenFields">
+                    <article v-for="(field, index) in mugenFields" :key="field.id || index" class="editor-card mugen-field-card">
+                        <div class="mugen-field-head"><span class="field-number">{{ index + 1 }}</span><b>{{ field.label || 'Field Baru' }}</b><button type="button" class="danger-icon" @click="removeMugenField(index)"><Trash2 :size="17" /></button></div>
+                        <div class="form-grid">
+                            <label class="field field-full"><span>Label Pertanyaan</span><input v-model="field.label" required maxlength="160" /></label>
+                            <label class="field"><span>Tipe Form</span><select v-model="field.type"><option value="text">Text</option><option value="email">Email</option><option value="tel">Telephone / WhatsApp</option><option value="url">URL</option><option value="textarea">Textarea</option><option value="select">Dropdown</option><option value="radio">Pilihan Radio</option><option value="checkbox">Checkbox</option></select></label>
+                            <label class="field"><span>Placeholder</span><input v-model="field.placeholder" /></label>
+                            <label v-if="['select','radio'].includes(field.type)" class="field field-full"><span>Pilihan (satu per baris)</span><textarea :value="field.options.join('\n')" rows="3" @input="changeMugenOptions(field, $event)"></textarea></label>
+                            <label class="check-field"><input v-model="field.is_required" type="checkbox" /><span><b>Wajib diisi</b></span></label>
+                            <label class="check-field"><input v-model="field.is_active" type="checkbox" /><span><b>Tampilkan field</b></span></label>
+                        </div>
+                    </article>
+                    <p v-if="mugenError" class="form-error">{{ mugenError }}</p>
+                    <div class="mugen-config-actions"><button type="button" class="cancel-button" @click="addMugenField"><Plus :size="17" />Tambah Field</button><button class="button" :disabled="mugenSaving">{{ mugenSaving ? 'Menyimpan...' : 'Simpan Pengaturan Form' }}</button></div>
+                </form>
+            </div>
             <div
-                v-if="
+                v-else-if="
                     ['slider-create', 'slider-edit'].includes(
                         String(route.name),
                     )
@@ -1578,12 +1770,12 @@ watch(
                         </h3>
                         <div class="form-grid">
                             <label class="field field-full"
-                                ><span>Judul *</span
+                                ><span>{{ currentModule === "foto" ? "Nama Album *" : "Judul *" }}</span
                                 ><input
                                     v-model="contentForm.title"
                                     required
                                     maxlength="160"
-                                    placeholder="Masukkan judul" /></label
+                                    :placeholder="currentModule === 'foto' ? 'Contoh: Live Session Bogor 2026' : 'Masukkan judul'" /></label
                             ><label class="field"
                                 ><span>Slug URL</span
                                 ><input
@@ -1604,6 +1796,8 @@ watch(
                                           ? "Jenis / Peran Artis"
                                           : currentModule === "berita"
                                             ? "Kategori Berita"
+                                          : currentModule === "foto"
+                                            ? "Ringkasan Album"
                                             : "Subjudul"
                                 }}</span
                                 ><input
@@ -1683,7 +1877,18 @@ watch(
                                     v-model="contentForm.metadata.duration"
                                     placeholder="04:28"
                             /></label>
-                            <div class="field field-full">
+                            <div v-if="currentModule === 'foto'" class="field field-full album-upload-field">
+                                <span>Foto di dalam Album *</span>
+                                <label class="image-upload" :class="{ filled: albumImages.length, loading: imageUploading === 'content' }">
+                                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple @change="uploadAlbumPhotos(($event.target as HTMLInputElement).files)" />
+                                    <span class="upload-icon"><ImageUp /></span>
+                                    <span class="upload-copy"><b>{{ imageUploading === "content" ? "Mengunggah foto..." : "Tambahkan banyak foto sekaligus" }}</b><small>JPG, PNG, atau WebP · maksimal 8 MB per foto</small></span>
+                                </label>
+                                <div v-if="albumImages.length" class="album-photo-grid">
+                                    <figure v-for="(photo, index) in albumImages" :key="photo"><img :src="photo" :alt="`Foto album ${index + 1}`" /><button type="button" :aria-label="`Hapus foto ${index + 1}`" @click="removeAlbumPhoto(index)"><X /></button></figure>
+                                </div>
+                            </div>
+                            <div v-else class="field field-full">
                                 <span>Upload Gambar</span
                                 ><label
                                     class="image-upload"
@@ -2267,10 +2472,10 @@ watch(
                     >Foto</RouterLink
                 ><RouterLink to="/video" @click="menuOpen = false"
                     >Video</RouterLink
-                ><RouterLink to="/kolaborasi" @click="menuOpen = false"
-                    >Kolaborasi</RouterLink
                 ><RouterLink to="/tentang" @click="menuOpen = false"
                     >Tentang</RouterLink
+                ><RouterLink to="/mugen" @click="menuOpen = false"
+                    >MUGEN</RouterLink
                 >
             </nav>
         </header>
@@ -2295,6 +2500,7 @@ watch(
                     ><span class="note note-three">♫</span>
                     <div class="sound-wave"><i v-for="n in 18" :key="n" /></div>
                 </div>
+                <div class="hero-sound-rings" aria-hidden="true"><i v-for="n in 3" :key="n" /></div>
                 <Transition name="hero-copy" mode="out-in"
                     ><div
                         :key="activeSlide"
@@ -2303,12 +2509,10 @@ watch(
                     >
                         <h1>
                             <template
-                                v-for="(line, lineIndex) in heroSlides[
-                                    activeSlide
-                                ].title"
+                                v-for="(line, lineIndex) in activeHeroTitle"
                                 :key="line"
-                                ><br v-if="lineIndex" />{{ line }}</template
-                            ><span>.</span>
+                                ><br v-if="lineIndex" /><span :class="{ 'hero-title-accent': lineIndex > 0 }">{{ line }}</span></template
+                            ><span class="hero-title-dot">.</span>
                         </h1>
                         <p>{{ heroSlides[activeSlide].text }}</p>
                         <div>
@@ -2328,17 +2532,6 @@ watch(
                     >
                         <ChevronLeft />
                     </button>
-                    <div class="slide-dots">
-                        <button
-                            v-for="(_, i) in heroSlides"
-                            :key="i"
-                            :class="{ active: i === activeSlide }"
-                            :aria-label="`Buka slide ${i + 1}`"
-                            @click="goSlide(i)"
-                        >
-                            <span />
-                        </button>
-                    </div>
                     <button aria-label="Slide berikutnya" @click="nextSlide">
                         <ChevronRight />
                     </button>
@@ -2346,6 +2539,7 @@ watch(
                 <div class="slide-counter">
                     <b>0{{ activeSlide + 1 }}</b
                     ><span>/</span><small>0{{ heroSlides.length }}</small>
+                    <div class="slide-dots"><button v-for="(_, i) in heroSlides" :key="i" :class="{ active: i === activeSlide }" :aria-label="`Buka slide ${i + 1}`" @click="goSlide(i)"><span /></button></div>
                 </div>
                 <div class="hero-wave" aria-hidden="true">
                     <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
@@ -2411,6 +2605,9 @@ watch(
                                 :style="{ height: `${10 + ((n * 9) % 26)}px` }"
                             ></i>
                         </div>
+                        <div class="about-sound-chip" aria-hidden="true">
+                            <i v-for="n in 9" :key="n" :style="{ height: `${8 + ((n * 7) % 20)}px` }" />
+                        </div>
                     </div>
                     <Music2 class="about-floating-note" aria-hidden="true" />
                 </div>
@@ -2426,6 +2623,8 @@ watch(
                         ></i>
                     </div>
                     <div class="ornament-rings"></div>
+                    <span class="ornament-spark ornament-spark-one">✦</span>
+                    <span class="ornament-spark ornament-spark-two">✦</span>
                 </div>
             </section>
             <section
@@ -2676,14 +2875,14 @@ watch(
                         </div>
                     </div>
                     <div class="media-gallery-layout">
-                        <div class="photo-gallery-panel">
+                        <div id="galeri-foto" class="photo-gallery-panel">
                             <div class="panel-heading">
                                 <span><Image :size="18" />Galeri Foto</span
-                                ><a class="panel-view-all" href="#galeri-foto"
+                                ><RouterLink class="panel-view-all" to="/foto"
                                     >Lihat Semua Foto <ArrowRight :size="14"
-                                /></a>
+                                /></RouterLink>
                             </div>
-                            <div id="galeri-foto" class="photo-mosaic">
+                            <div class="photo-mosaic">
                                 <figure
                                     v-for="(g, i) in gallery.slice(0, 4)"
                                     :key="i"
@@ -2706,14 +2905,14 @@ watch(
                                 </figure>
                             </div>
                         </div>
-                        <div class="video-gallery-panel">
+                        <div id="galeri-video" class="video-gallery-panel">
                             <div class="panel-heading">
                                 <span><Film :size="18" />Galeri Video</span
-                                ><a class="panel-view-all" href="#galeri-video"
+                                ><RouterLink class="panel-view-all" to="/video"
                                     >Lihat Semua Video <ArrowRight :size="14"
-                                /></a>
+                                /></RouterLink>
                             </div>
-                            <div id="galeri-video" class="video-list">
+                            <div class="video-list">
                                 <button
                                     v-for="(video, i) in videoGallery"
                                     :key="video.title"
@@ -2751,6 +2950,42 @@ watch(
                 <a class="button" href="mailto:hello@13nadi.com"
                     >Hubungi Kami <ArrowRight :size="18"
                 /></a>
+            </section>
+        </main>
+        <main v-else-if="route.name === 'mugen'" class="mugen-page">
+            <section class="mugen-intro">
+                <div class="mugen-noise" aria-hidden="true"></div>
+                <div class="mugen-hero-wave mugen-hero-wave-left" aria-hidden="true"><i v-for="n in 7" :key="n"></i></div>
+                <div class="mugen-hero-wave mugen-hero-wave-right" aria-hidden="true"><i v-for="n in 7" :key="n"></i></div>
+                <div class="wrap mugen-hero-copy">
+                    <div class="mugen-hero-mark" aria-hidden="true"><i v-for="n in 5" :key="n"></i></div>
+                    <h1>MUGEN</h1>
+                    <h2>Artist Registration</h2>
+                    <p>Bring your sound to Bogor. MUGEN is an open invitation for artists and bands ready to share their next live moment.</p>
+                    <a class="mugen-hero-cta" href="#mugen-form">Register your act <ArrowRight :size="18" /></a>
+                </div>
+            </section>
+            <section class="wrap mugen-event-strip" aria-label="Informasi acara MUGEN">
+                <article><MapPin :size="28" /><div><b>Bogor, Indonesia</b><span>Rooted in the local music scene.</span></div></article>
+                <article><Mic2 :size="28" /><div><b>Artist / Band Call</b><span>All genres and independent voices welcome.</span></div></article>
+                <article><Radio :size="28" /><div><b>Review &amp; Connect</b><span>Our team will reach out after review.</span></div></article>
+            </section>
+            <section class="wrap mugen-form-section">
+                <div class="mugen-form-copy"><span class="mugen-form-count">01 — Registration</span><h2>Make your next stage <em>count.</em></h2><p>Share your details with us. Each submission is reviewed by the MUGEN team, and we will reach out using the contact you provide.</p><div class="mugen-form-note"><Music2 :size="20" /><span>Required fields help us learn the essentials about your act.</span></div></div>
+                <div v-if="mugenSuccess" class="mugen-success"><CheckCircle2 /><h2>Thank you!</h2><p>Your MUGEN registration has been submitted successfully.</p><button class="button" @click="mugenSuccess = false; loadMugenForm()">Submit another artist</button></div>
+                <form v-else id="mugen-form" class="mugen-public-form" @submit.prevent="submitMugen">
+                    <div class="mugen-form-heading"><span>Tell us about your sound</span><small>Fields marked <b>*</b> are required</small></div>
+                    <label v-for="field in mugenFields" :key="field.key" class="field" :class="{ 'field-full': ['textarea','radio','checkbox'].includes(field.type) }">
+                        <span>{{ field.label }} <em v-if="field.is_required">*</em></span>
+                        <textarea v-if="field.type === 'textarea'" v-model="mugenAnswers[field.key]" :required="field.is_required" :placeholder="field.placeholder" rows="5"></textarea>
+                        <select v-else-if="field.type === 'select'" v-model="mugenAnswers[field.key]" :required="field.is_required"><option value="">Select an option</option><option v-for="option in field.options" :key="option">{{ option }}</option></select>
+                        <span v-else-if="field.type === 'radio'" class="mugen-radio"><label v-for="option in field.options" :key="option"><input v-model="mugenAnswers[field.key]" type="radio" :name="field.key" :value="option" :required="field.is_required" />{{ option }}</label></span>
+                        <span v-else-if="field.type === 'checkbox'" class="mugen-check"><input v-model="mugenAnswers[field.key]" type="checkbox" :required="field.is_required" /> Yes</span>
+                        <input v-else v-model="mugenAnswers[field.key]" :type="field.type" :required="field.is_required" :placeholder="field.placeholder" />
+                    </label>
+                    <p v-if="mugenError" class="form-error field-full">{{ mugenError }}</p>
+                    <div class="mugen-submit field-full"><button class="button" :disabled="mugenSaving">{{ mugenSaving ? 'Submitting...' : 'Submit Registration' }}<ArrowRight :size="17" /></button></div>
+                </form>
             </section>
         </main>
         <main
@@ -2853,30 +3088,37 @@ watch(
                     </p>
                 </div>
             </section>
-            <section class="wrap page-section">
+            <section class="wrap page-section photo-albums-section">
+                <div class="album-page-ornaments" aria-hidden="true">
+                    <Disc3 />
+                    <Music2 />
+                    <div class="album-eq"><i v-for="bar in 17" :key="bar" /></div>
+                </div>
                 <div class="page-heading">
                     <div>
-                        <span>ARSIP VISUAL</span>
-                        <h2>Galeri Foto</h2>
+                        <span>KOLEKSI BERDASARKAN ALBUM</span>
+                        <h2>Kategori Foto</h2>
                     </div>
-                    <small>{{ gallery.length }} momen</small>
+                    <small>{{ photoAlbums.length }} album · {{ gallery.length }} foto</small>
                 </div>
-                <div class="photo-page-grid">
-                    <figure v-for="(g, i) in gallery" :key="g">
-                        <img :src="g" :alt="`Momen musik ${i + 1}`" />
-                        <figcaption>
-                            <span>0{{ i + 1 }}</span
-                            ><b>{{
-                                [
-                                    "Energi Penonton",
-                                    "Sorot Panggung",
-                                    "Nada yang Hidup",
-                                    "Di Balik Cahaya",
-                                    "Cerita Sang Artis",
-                                ][i]
-                            }}</b>
-                        </figcaption>
-                    </figure>
+                <div class="album-page-grid">
+                    <article
+                        v-for="(album, i) in photoAlbums"
+                        :key="album.id || album.slug"
+                        class="album-page-card"
+                    >
+                        <img :src="album.cover" :alt="`Cover album ${album.title}`" />
+                        <div class="album-page-shade" />
+                        <span class="album-page-index">0{{ i + 1 }}</span>
+                        <span class="album-page-count">{{ album.images.length }} FOTO</span>
+                        <div class="album-page-copy">
+                            <h3>{{ album.title }}</h3>
+                            <p>{{ album.description || "Kumpulan momen terpilih dari perjalanan 13 Nadi." }}</p>
+                        </div>
+                        <div class="album-page-wave" aria-hidden="true">
+                            <i v-for="bar in 21" :key="bar" />
+                        </div>
+                    </article>
                 </div>
             </section>
         </main>
@@ -3311,19 +3553,23 @@ watch(
                     /></RouterLink>
                     <p>Nada yang Menghubungkan Cerita.</p>
                 </div>
-                <div>
+                <div class="footer-navigation">
                     <b>Navigasi</b><RouterLink to="/">Beranda</RouterLink
                     ><RouterLink to="/rilis">Rilis</RouterLink
                     ><RouterLink to="/berita">Berita</RouterLink
                     ><RouterLink to="/foto">Foto</RouterLink
                     ><RouterLink to="/video">Video</RouterLink
-                    ><RouterLink to="/kolaborasi">Kolaborasi</RouterLink
-                    ><RouterLink to="/tentang">Tentang</RouterLink>
+                    ><RouterLink to="/tentang">Tentang</RouterLink
+                    ><RouterLink to="/mugen">MUGEN</RouterLink>
                 </div>
-                <div>
-                    <b>Ikuti Kami</b><a href="#">Spotify</a
-                    ><a href="#">Apple Music</a><a href="#">YouTube</a
-                    ><a href="#">Instagram</a>
+                <div class="footer-socials">
+                    <b>Ikuti Kami</b>
+                    <div>
+                        <a class="social-logo spotify-logo" href="#" aria-label="Spotify"><i></i><i></i><i></i></a>
+                        <a class="social-logo apple-logo" href="#" aria-label="Apple Music">♪</a>
+                        <a class="social-logo youtube-logo" href="#" aria-label="YouTube"><i></i></a>
+                        <a class="social-logo instagram-logo" href="#" aria-label="Instagram"><i></i></a>
+                    </div>
                 </div>
                 <div>
                     <b>Hubungi Kami</b

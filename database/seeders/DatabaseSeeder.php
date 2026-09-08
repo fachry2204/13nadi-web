@@ -13,5 +13,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(NadikuSeeder::class);
+        $this->call(MugenSeeder::class);
     }
 }

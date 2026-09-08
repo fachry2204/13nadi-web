@@ -14,6 +14,7 @@ const routes = [
     { path: "/video", name: "videos", component: Blank },
     { path: "/kolaborasi", name: "collaboration", component: Blank },
     { path: "/tentang", name: "about", component: Blank },
+    { path: "/mugen", name: "mugen", component: Blank },
     { path: "/rilisan/:slug", name: "release", component: Blank },
     { path: "/artis/:slug", name: "artist", component: Blank },
     { path: "/berita/:slug", name: "news", component: Blank },
