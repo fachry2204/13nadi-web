@@ -1912,7 +1912,7 @@ watch(
                                 ><input
                                     v-model="contentForm.subtitle"
                                     maxlength="255" /></label
-                            ><label v-if="currentModule !== 'berita'" class="field field-full"
+                            ><label v-if="currentModule !== 'berita' && currentModule !== 'rilisan'" class="field field-full"
                                 ><span>Deskripsi</span
                                 ><textarea
                                     v-model="contentForm.description"
@@ -2912,21 +2912,24 @@ watch(
                         <RouterLink
                             v-for="r in releases"
                             :key="r.slug"
-                            class="release-card"
+                            class="release-card modern-card"
                             :to="`/rilisan/${r.slug}`"
-                            ><div>
-                                <img
-                                    :src="r.image"
-                                    :alt="`Sampul ${r.title}`"
-                                />
+                        >
+                            <div class="card-art-wrap">
+                                <img :src="r.image" :alt="`Sampul ${r.title}`" />
+                                <div class="vinyl-ornament"></div>
                             </div>
                             <div class="release-info">
                                 <h3>{{ r.title }}</h3>
                                 <p>{{ r.artist }}</p>
-                                <small>{{ r.genre }} · {{ r.year }}</small
-                                ><span class="play">▶</span>
-                            </div></RouterLink
-                        >
+                                <div class="info-foot">
+                                    <small>{{ r.genre }}</small>
+                                    <div class="card-eq"><i></i><i></i><i></i></div>
+                                    <small>{{ r.year }}</small>
+                                </div>
+                                <span class="play">▶</span>
+                            </div>
+                        </RouterLink>
                     </div>
                 </div>
                 <div
@@ -3139,6 +3142,11 @@ watch(
             v-else-if="route.name === 'releases'"
             class="content-page page-releases"
         >
+            <div class="album-page-ornaments">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor"></circle></svg>
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-7.5c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </div>
+            <div class="album-eq page-releases-eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
             <section class="inner-hero">
                 <div class="wrap">
                     <span>DISKOGRAFI 13 NADI</span>
@@ -3161,18 +3169,24 @@ watch(
                     <RouterLink
                         v-for="r in releases"
                         :key="r.slug"
-                        class="release-card"
+                        class="release-card modern-card"
                         :to="`/rilisan/${r.slug}`"
-                        ><div>
+                    >
+                        <div class="card-art-wrap">
                             <img :src="r.image" :alt="`Sampul ${r.title}`" />
+                            <div class="vinyl-ornament"></div>
                         </div>
                         <div class="release-info">
                             <h3>{{ r.title }}</h3>
                             <p>{{ r.artist }}</p>
-                            <small>{{ r.genre }} · {{ r.year }}</small
-                            ><span class="play">▶</span>
-                        </div></RouterLink
-                    >
+                            <div class="info-foot">
+                                <small>{{ r.genre }}</small>
+                                <div class="card-eq"><i></i><i></i><i></i></div>
+                                <small>{{ r.year }}</small>
+                            </div>
+                            <span class="play">▶</span>
+                        </div>
+                    </RouterLink>
                 </div>
             </section>
         </main>
@@ -3435,16 +3449,12 @@ watch(
             class="release-detail wrap"
         >
             <section class="release-overview">
-                <div class="release-cover-frame">
-                    <span class="cover-kicker"
-                        ><Disc3 :size="14" /> COVER ART</span
-                    ><img
-                        class="detail-cover"
+                <div class="release-cover-frame vinyl-frame">
+                    <img
+                        class="detail-cover vinyl-spin"
                         :src="currentRelease.image"
                         :alt="`Sampul ${currentRelease.title}`"
-                    /><span class="cover-caption"
-                        >13 NADI MUSIK · OFFICIAL RELEASE</span
-                    >
+                    />
                 </div>
                 <article class="release-copy">
                     <div
@@ -3472,45 +3482,11 @@ watch(
                     <span v-else class="eyebrow">RILISAN 13 NADI</span>
                     <h1>{{ currentRelease.title }}</h1>
                     <h2>{{ currentRelease.artist }}</h2>
-                    <div class="release-description">
-                        <small>TENTANG RILISAN</small>
-                        <p>
-                            {{
-                                currentReleaseDescription ||
-                                "Informasi lengkap rilisan ini akan segera diperbarui."
-                            }}
-                        </p>
-                    </div>
-                </article>
-            </section>
-            <section
-                v-if="spotifyEmbedUrl || youtubeEmbedUrl"
-                class="release-media"
-            >
-                <div class="release-media-heading">
-                    <span><Music2 :size="18" /> DENGARKAN &amp; TONTON</span>
-                    <h3>Rasakan rilisan dalam suara dan visual.</h3>
-                    <p>
-                        Pilih platform favorit Anda untuk menikmati karya
-                        terbaru 13 Nadi Musik.
-                    </p>
-                </div>
-                <div class="release-media-grid">
                     <section
                         v-if="spotifyEmbedUrl"
-                        class="spotify-player"
+                        class="spotify-player inline-player"
                         aria-label="Spotify web player"
                     >
-                        <div class="spotify-player-heading">
-                            <span><Music2 :size="18" /></span>
-                            <div>
-                                <small>DENGARKAN DI SPOTIFY</small
-                                ><b
-                                    >{{ currentRelease.title }} ·
-                                    {{ currentRelease.artist }}</b
-                                >
-                            </div>
-                        </div>
                         <iframe
                             :src="spotifyEmbedUrl"
                             :title="`Spotify player ${currentRelease.title}`"
@@ -3536,6 +3512,17 @@ watch(
                             >Buka di Spotify <ExternalLink :size="15"
                         /></a>
                     </section>
+                </article>
+            </section>
+            <section
+                v-if="youtubeEmbedUrl"
+                class="release-media"
+            >
+                <div class="release-media-heading">
+                    <span><Music2 :size="18" /> TONTON VIDEO</span>
+                    <h3>Rasakan rilisan dalam visual.</h3>
+                </div>
+                <div class="release-media-grid">
                     <section
                         v-if="youtubeEmbedUrl"
                         class="youtube-player"
