@@ -106,4 +106,23 @@ class AdminContentTest extends TestCase
             '/uploads/live-session-backstage.jpg',
         ], $response->json('data.metadata.images'));
     }
+
+    public function test_news_body_keeps_editor_formatting_and_removes_unsafe_html(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson('/api/v1/admin/news', [
+            'title' => 'Cerita Baru',
+            'slug' => 'cerita-baru',
+            'description' => '<h2 onclick="alert(1)">Judul</h2><p><strong>Isi artikel</strong> <script>alert(1)</script></p><a href="javascript:alert(1)">Tautan</a>',
+            'is_active' => true,
+        ])->assertCreated();
+
+        $description = $response->json('data.description');
+        $this->assertStringContainsString('<h2>Judul</h2>', $description);
+        $this->assertStringContainsString('<strong>Isi artikel</strong>', $description);
+        $this->assertStringNotContainsString('script', $description);
+        $this->assertStringNotContainsString('onclick', $description);
+        $this->assertStringNotContainsString('javascript:', $description);
+    }
 }

@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 import {
     Activity,
     ArrowRight,
+    Bold,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
@@ -14,9 +15,14 @@ import {
     ClipboardList,
     GripVertical,
     Handshake,
+    Heading2,
     Image,
     ImageUp,
     LayoutDashboard,
+    Italic,
+    Link2,
+    List,
+    ListOrdered,
     LogOut,
     Menu,
     MapPin,
@@ -25,10 +31,12 @@ import {
     Pencil,
     Plus,
     Radio,
+    Quote,
     Search,
     Settings,
     Trash2,
     Users,
+    Underline,
     X,
 } from "@lucide/vue";
 import slide1Image from "./assets/slide1.jpg";
@@ -41,7 +49,9 @@ const route = useRoute(),
     sideOpen = ref(false),
     query = ref(""),
     toast = ref(""),
-    selectedVideo = ref<number | null>(null);
+    selectedVideo = ref<number | null>(null),
+    selectedPhotoAlbum = ref<PhotoAlbum | null>(null),
+    selectedPhotoIndex = ref(0);
 const username = ref(""),
     password = ref(""),
     authError = ref(""),
@@ -63,6 +73,7 @@ const contentSaving = ref(false),
 const imageUploading = ref<"slider" | "content" | "">(""),
     imageUploadError = ref("");
 const albumImages = ref<string[]>([]);
+const newsEditor = ref<HTMLElement | null>(null);
 const publicLoading = ref(true);
 type MugenField = { id?: number; key: string; label: string; type: string; options: string[]; placeholder?: string; is_required: boolean; is_active: boolean };
 const mugenFields = ref<MugenField[]>([]), mugenSubmissions = ref<any[]>([]);
@@ -108,6 +119,38 @@ const contentForm = ref({
         link_enabled: false,
     } as Record<string, string | boolean>,
 });
+const stripHtml = (html = "") =>
+    html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+const articleBody = (article: { content?: string; excerpt?: string }) =>
+    article.content || `<p>${article.excerpt || ""}</p>`;
+const syncNewsEditor = () => {
+    if (
+        newsEditor.value &&
+        newsEditor.value.innerHTML !== contentForm.value.description
+    ) {
+        newsEditor.value.innerHTML = contentForm.value.description;
+    }
+};
+const updateNewsBody = (event: Event) => {
+    contentForm.value.description = (event.target as HTMLElement).innerHTML;
+};
+const formatNewsBody = (command: string, value?: string) => {
+    newsEditor.value?.focus();
+    document.execCommand(command, false, value);
+    if (newsEditor.value) contentForm.value.description = newsEditor.value.innerHTML;
+};
+const addNewsLink = () => {
+    const url = window.prompt("Masukkan URL tautan");
+    if (!url) return;
+    formatNewsBody("createLink", url);
+};
+watch(
+    () => contentForm.value.description,
+    () => {
+        if (currentModule.value === "berita") requestAnimationFrame(syncNewsEditor);
+    },
+    { flush: "post" },
+);
 const homeBanner = ref({ image: "", link: "", linkEnabled: false, title: "" });
 const aboutTitle = ref("13 Nadi Musik");
 const aboutImage = ref("");
@@ -425,23 +468,86 @@ const photoAlbums = reactive<PhotoAlbum[]>([
         images: gallery.slice(3),
     },
 ]);
-const videoGallery = reactive([
+const selectedPhoto = computed(() =>
+    selectedPhotoAlbum.value?.images[selectedPhotoIndex.value] || "",
+);
+const openPhotoGallery = (album: PhotoAlbum, index = 0) => {
+    if (!album.images.length) return;
+    selectedPhotoAlbum.value = album;
+    selectedPhotoIndex.value = Math.min(Math.max(index, 0), album.images.length - 1);
+};
+const stepPhoto = (direction: number) => {
+    const total = selectedPhotoAlbum.value?.images.length || 0;
+    if (!total) return;
+    selectedPhotoIndex.value = (selectedPhotoIndex.value + direction + total) % total;
+};
+const openHomePhoto = (image: string, index: number) =>
+    openPhotoGallery(
+        {
+            slug: "galeri-13-nadi",
+            title: "Galeri Foto 13 Nadi",
+            description: "Momen pilihan dari panggung, studio, dan perjalanan kreatif.",
+            cover: image,
+            images: [...gallery],
+        },
+        index,
+    );
+type VideoEntry = {
+    title: string;
+    duration: string;
+    image: string;
+    externalUrl: string;
+    description?: string;
+};
+const videoGallery = reactive<VideoEntry[]>([
     {
         title: "Live Session — Suara dari Panggung",
         duration: "04:28",
         image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1000&q=88",
+        externalUrl: "",
     },
     {
         title: "Behind The Sound — Studio Stories",
         duration: "06:12",
         image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1000&q=88",
+        externalUrl: "",
     },
     {
         title: "Artist Spotlight — Cerita di Balik Nada",
         duration: "03:46",
         image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=88",
+        externalUrl: "",
     },
 ]);
+const getYouTubeId = (rawUrl = "") => {
+    try {
+        const url = new URL(rawUrl);
+        const host = url.hostname.replace(/^www\./, "").toLowerCase();
+        if (host === "youtu.be") return url.pathname.split("/").filter(Boolean)[0] || "";
+        if (!["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) return "";
+        const pathParts = url.pathname.split("/").filter(Boolean);
+        if (["embed", "shorts", "live"].includes(pathParts[0])) return pathParts[1] || "";
+        return url.searchParams.get("v") || "";
+    } catch { return ""; }
+};
+const getYouTubeThumbnail = (url = "") => {
+    const id = getYouTubeId(url);
+    return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
+};
+const getVideoPlayerSource = (url = "") => {
+    const youtubeId = getYouTubeId(url);
+    if (youtubeId) return { kind: "embed", url: `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0` };
+    const vimeoId = url.match(/(?:vimeo\.com\/(?:video\/)?)(\d+)/i)?.[1];
+    if (vimeoId) return { kind: "embed", url: `https://player.vimeo.com/video/${vimeoId}?autoplay=1` };
+    if (/\.(mp4|webm|ogg)(?:\?.*)?$/i.test(url)) return { kind: "file", url };
+    return { kind: "unavailable", url: "" };
+};
+const activeVideo = computed<VideoEntry | null>(() =>
+    selectedVideo.value === null ? null : videoGallery[selectedVideo.value] || null,
+);
+const activeVideoSource = computed(() =>
+    getVideoPlayerSource(activeVideo.value?.externalUrl || ""),
+);
 const modules = [
     ["Dashboard", "", LayoutDashboard],
     ["Slider Hero", "slider", Image],
@@ -737,7 +843,8 @@ const loadPublicContent = async () => {
                     category: x.subtitle || "Berita",
                     date: x.metadata?.date || "",
                     title: x.title,
-                    excerpt: x.description || "",
+                    excerpt: stripHtml(x.description || ""),
+                    content: x.description || "",
                     image: x.image_url || "",
                 })),
             );
@@ -792,7 +899,9 @@ const loadPublicContent = async () => {
                 ...groups.video.map((x: any) => ({
                     title: x.title,
                     duration: x.metadata?.duration || "",
-                    image: x.image_url || "",
+                    image: x.image_url || getYouTubeThumbnail(x.external_url || ""),
+                    externalUrl: x.external_url || "",
+                    description: x.description || "",
                 })),
             );
     } catch {}
@@ -1803,13 +1912,39 @@ watch(
                                 ><input
                                     v-model="contentForm.subtitle"
                                     maxlength="255" /></label
-                            ><label class="field field-full"
+                            ><label v-if="currentModule !== 'berita'" class="field field-full"
                                 ><span>Deskripsi</span
                                 ><textarea
                                     v-model="contentForm.description"
                                     rows="7"
                                     placeholder="Masukkan deskripsi konten"
                                 ></textarea></label
+                            ><section v-else class="field field-full news-editor-field">
+                                <span>Isi Berita</span>
+                                <div class="news-editor-toolbar" role="toolbar" aria-label="Format isi berita">
+                                    <button type="button" title="Judul bagian" aria-label="Judul bagian" @click="formatNewsBody('formatBlock', 'h2')"><Heading2 /></button>
+                                    <button type="button" title="Tebal" aria-label="Tebal" @click="formatNewsBody('bold')"><Bold /></button>
+                                    <button type="button" title="Miring" aria-label="Miring" @click="formatNewsBody('italic')"><Italic /></button>
+                                    <button type="button" title="Garis bawah" aria-label="Garis bawah" @click="formatNewsBody('underline')"><Underline /></button>
+                                    <i aria-hidden="true"></i>
+                                    <button type="button" title="Daftar poin" aria-label="Daftar poin" @click="formatNewsBody('insertUnorderedList')"><List /></button>
+                                    <button type="button" title="Daftar bernomor" aria-label="Daftar bernomor" @click="formatNewsBody('insertOrderedList')"><ListOrdered /></button>
+                                    <button type="button" title="Kutipan" aria-label="Kutipan" @click="formatNewsBody('formatBlock', 'blockquote')"><Quote /></button>
+                                    <i aria-hidden="true"></i>
+                                    <button type="button" title="Tambahkan tautan" aria-label="Tambahkan tautan" @click="addNewsLink"><Link2 /></button>
+                                    <button type="button" title="Bersihkan format" aria-label="Bersihkan format" class="editor-clear" @click="formatNewsBody('removeFormat')">Tx</button>
+                                </div>
+                                <div
+                                    ref="newsEditor"
+                                    class="news-rich-editor"
+                                    contenteditable="true"
+                                    role="textbox"
+                                    aria-multiline="true"
+                                    data-placeholder="Tulis isi berita di sini..."
+                                    @input="updateNewsBody"
+                                ></div>
+                                <small>Gunakan toolbar untuk menulis artikel, kutipan, daftar, dan tautan. Tekan Enter untuk paragraf baru.</small>
+                            </section
                             ><label
                                 v-if="currentModule === 'tentang'"
                                 class="field field-full"
@@ -1955,7 +2090,9 @@ watch(
                                 ><span>{{
                                     currentModule === "rilisan"
                                         ? "Link Spotify"
-                                        : "URL Tujuan / Media"
+                                        : currentModule === "video"
+                                          ? "Link Video"
+                                          : "URL Tujuan / Media"
                                 }}</span
                                 ><input
                                     v-model="contentForm.external_url"
@@ -1963,8 +2100,10 @@ watch(
                                     :placeholder="
                                         currentModule === 'rilisan'
                                             ? 'https://open.spotify.com/track/...'
-                                            : 'https://...'
-                                    " /></label
+                                            : currentModule === 'video'
+                                              ? 'https://www.youtube.com/watch?v=...'
+                                              : 'https://...'
+                                    " /><small v-if="currentModule === 'video'">Mendukung YouTube, Vimeo, atau file MP4/WebM. Jika gambar belum diunggah, thumbnail YouTube akan digunakan otomatis.</small></label
                             ><label
                                 v-if="currentModule === 'rilisan'"
                                 class="field field-full"
@@ -2045,7 +2184,9 @@ watch(
                                 </h3>
                                 <p>
                                     {{
-                                        contentForm.description ||
+                                        (currentModule === "berita"
+                                            ? stripHtml(contentForm.description)
+                                            : contentForm.description) ||
                                         "Deskripsi akan tampil di area ini."
                                     }}
                                 </p>
@@ -2886,6 +3027,12 @@ watch(
                                 <figure
                                     v-for="(g, i) in gallery.slice(0, 4)"
                                     :key="i"
+                                    role="button"
+                                    tabindex="0"
+                                    :aria-label="`Buka foto ${i + 1} dalam galeri`"
+                                    @click="openHomePhoto(g, i)"
+                                    @keydown.enter.prevent="openHomePhoto(g, i)"
+                                    @keydown.space.prevent="openHomePhoto(g, i)"
                                 >
                                     <img
                                         :src="g"
@@ -3106,6 +3253,12 @@ watch(
                         v-for="(album, i) in photoAlbums"
                         :key="album.id || album.slug"
                         class="album-page-card"
+                        role="button"
+                        tabindex="0"
+                        :aria-label="`Buka album ${album.title}`"
+                        @click="openPhotoGallery(album)"
+                        @keydown.enter.prevent="openPhotoGallery(album)"
+                        @keydown.space.prevent="openPhotoGallery(album)"
                     >
                         <img :src="album.cover" :alt="`Cover album ${album.title}`" />
                         <div class="album-page-shade" />
@@ -3459,12 +3612,7 @@ watch(
                     >{{ currentNews.category }} · {{ currentNews.date }}</span
                 >
                 <h1>{{ currentNews.title }}</h1>
-                <p>{{ currentNews.excerpt }}</p>
-                <p>
-                    13 Nadi menghadirkan cerita di balik musik, panggung, dan
-                    proses kreatif para artis. Setiap kabar menjadi ruang untuk
-                    mengenal karya secara lebih dekat dan bermakna.
-                </p>
+                <article class="news-article-body" v-html="articleBody(currentNews)"></article>
                 <RouterLink class="button" to="/#berita"
                     ><ArrowRight :size="17" />Kembali ke Berita</RouterLink
                 >
@@ -3505,11 +3653,30 @@ watch(
             <RouterLink class="button" to="/">Kembali ke Beranda</RouterLink>
         </main>
         <div
-            v-if="selectedVideo !== null"
+            v-if="selectedPhotoAlbum"
+            class="photo-modal"
+            role="dialog"
+            aria-modal="true"
+            :aria-label="`Galeri foto ${selectedPhotoAlbum.title}`"
+            @click.self="selectedPhotoAlbum = null"
+        >
+            <section class="photo-modal-card">
+                <button class="photo-modal-close" aria-label="Tutup galeri foto" @click="selectedPhotoAlbum = null"><X /></button>
+                <div class="photo-modal-main">
+                    <img :src="selectedPhoto" :alt="`${selectedPhotoAlbum.title} · foto ${selectedPhotoIndex + 1}`" />
+                    <button v-if="selectedPhotoAlbum.images.length > 1" class="photo-modal-arrow photo-modal-prev" aria-label="Foto sebelumnya" @click="stepPhoto(-1)"><ChevronLeft /></button>
+                    <button v-if="selectedPhotoAlbum.images.length > 1" class="photo-modal-arrow photo-modal-next" aria-label="Foto berikutnya" @click="stepPhoto(1)"><ChevronRight /></button>
+                    <span class="photo-modal-count">{{ String(selectedPhotoIndex + 1).padStart(2, "0") }} / {{ String(selectedPhotoAlbum.images.length).padStart(2, "0") }}</span>
+                </div>
+                <div class="photo-modal-meta"><div><small>GALERI FOTO</small><h2>{{ selectedPhotoAlbum.title }}</h2><p>{{ selectedPhotoAlbum.description }}</p></div><div v-if="selectedPhotoAlbum.images.length > 1" class="photo-modal-thumbs"><button v-for="(photo, index) in selectedPhotoAlbum.images" :key="photo" type="button" :class="{ active: index === selectedPhotoIndex }" :aria-label="`Lihat foto ${index + 1}`" @click="selectedPhotoIndex = index"><img :src="photo" :alt="`Thumbnail foto ${index + 1}`" /></button></div></div>
+            </section>
+        </div>
+        <div
+            v-if="activeVideo"
             class="video-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Preview video"
+            :aria-label="`Pemutar video ${activeVideo.title}`"
             @click.self="selectedVideo = null"
         >
             <div class="video-modal-card">
@@ -3520,23 +3687,29 @@ watch(
                     <X />
                 </button>
                 <div class="video-modal-frame">
-                    <img
-                        :src="videoGallery[selectedVideo].image"
-                        :alt="videoGallery[selectedVideo].title"
-                    /><span class="modal-play">▶</span>
-                    <div class="modal-bars">
-                        <i
-                            v-for="n in 24"
-                            :key="n"
-                            :style="{ height: `${8 + ((n * 7) % 32)}px` }"
-                        ></i>
+                    <iframe
+                        v-if="activeVideoSource.kind === 'embed'"
+                        :src="activeVideoSource.url"
+                        :title="activeVideo.title"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen
+                    ></iframe>
+                    <video
+                        v-else-if="activeVideoSource.kind === 'file'"
+                        :src="activeVideoSource.url"
+                        controls
+                        autoplay
+                    ></video>
+                    <div v-else class="video-unavailable">
+                        <Film />
+                        <b>Video belum tersedia</b>
+                        <span>Tambahkan link YouTube, Vimeo, atau file video di admin.</span>
                     </div>
                 </div>
-                <small>13 NADI VIDEO PREMIERE</small>
-                <h3>{{ videoGallery[selectedVideo].title }}</h3>
+                <small>13 NADI VIDEO</small>
+                <h3>{{ activeVideo.title }}</h3>
                 <p>
-                    Preview visual pertunjukan dan perjalanan kreatif 13 Nadi
-                    Musik & Entertainment.
+                    {{ activeVideo.description || "Saksikan pertunjukan dan perjalanan kreatif 13 Nadi Musik & Entertainment." }}
                 </p>
             </div>
         </div>
