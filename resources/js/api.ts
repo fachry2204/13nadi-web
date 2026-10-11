@@ -1,10 +1,13 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
 const TOKEN_KEY = 'nadiku_session_token'
 let lastValidatedAt = 0
-let validationRequest: Promise<{data:{id:number;username:string;name:string}}> | null = null
+type AdminUser = { id: number; username: string; name: string; email?: string }
+let authenticatedUser: AdminUser | null = null
+let validationRequest: Promise<{data:AdminUser}> | null = null
 
 export const getToken = () => sessionStorage.getItem(TOKEN_KEY)
-export const clearSession = () => { sessionStorage.removeItem(TOKEN_KEY); lastValidatedAt = 0; validationRequest = null }
+export const getAdminUser = () => authenticatedUser
+export const clearSession = () => { sessionStorage.removeItem(TOKEN_KEY); lastValidatedAt = 0; authenticatedUser = null; validationRequest = null }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}, authenticated = false): Promise<T> {
   const headers = new Headers(options.headers)
@@ -37,20 +40,21 @@ export async function uploadAdminImage(file: File) {
 }
 
 export async function loginAdmin(username: string, password: string) {
-  const payload = await apiRequest<{data:{user:{id:number;username:string;name:string};token:string}}>('/auth/login', {
+  const payload = await apiRequest<{data:{user:AdminUser;token:string}}>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   })
   sessionStorage.setItem(TOKEN_KEY, payload.data.token)
   lastValidatedAt = Date.now()
+  authenticatedUser = payload.data.user
   return payload.data.user
 }
 
 export const validateSession = (force = false) => {
-  if (!force && lastValidatedAt && Date.now() - lastValidatedAt < 60_000) return Promise.resolve({data:{id:0,username:'admin',name:'Nadiku Admin'}})
+  if (!force && authenticatedUser && lastValidatedAt && Date.now() - lastValidatedAt < 60_000) return Promise.resolve({data:authenticatedUser})
   if (validationRequest) return validationRequest
-  validationRequest = apiRequest<{data:{id:number;username:string;name:string}}>('/auth/me', {}, true)
-    .then(payload => { lastValidatedAt = Date.now(); return payload })
+  validationRequest = apiRequest<{data:AdminUser}>('/auth/me', {}, true)
+    .then(payload => { lastValidatedAt = Date.now(); authenticatedUser = payload.data; return payload })
     .finally(() => { validationRequest = null })
   return validationRequest
 }

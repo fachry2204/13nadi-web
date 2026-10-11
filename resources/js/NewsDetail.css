@@ -522,3 +522,17 @@
         flex: 1 1 100px;
     }
 }
+
+/* Keep release titles prominent without letting long names dominate the page. */
+.release-copy h1 {
+    font-size: clamp(36px, 3.7vw, 50px);
+    line-height: 1.04;
+    letter-spacing: -1.7px;
+}
+
+@media (max-width: 700px) {
+    .release-copy h1 {
+        font-size: clamp(32px, 8vw, 40px);
+        letter-spacing: -1.1px;
+    }
+}

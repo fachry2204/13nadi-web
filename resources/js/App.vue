@@ -34,7 +34,8 @@ import {
 import slide1Image from "./assets/slide1.jpg";
 import slide2Image from "./assets/slide2.jpg";
 import "./NewsDetail.css";
-import { apiRequest, loginAdmin, logoutAdmin, uploadAdminImage } from "./api";
+import "./AdminSettings.css";
+import { apiRequest, getAdminUser, loginAdmin, logoutAdmin, uploadAdminImage } from "./api";
 const NewsWysiwygEditor = defineAsyncComponent(() => import("./components/NewsWysiwygEditor.vue"));
 
 const route = useRoute(),
@@ -51,6 +52,52 @@ const username = ref(""),
     authError = ref(""),
     authLoading = ref(false),
     adminLoading = ref(false);
+const currentAdmin = ref(getAdminUser());
+const settingsTab = ref<"website" | "users">("website");
+const settingsSaving = ref(false),
+    settingsError = ref("");
+const websiteSettings = ref<Record<string, string>>({
+    site_name: "13 Nadi Records",
+    site_description: "Nada yang menghubungkan cerita.",
+    email: "hello@13nadirecords.com",
+    phone: "+62 812-3456-7890",
+    address: "Jakarta, Indonesia",
+    instagram: "https://instagram.com/13nadi",
+    apple_music: "",
+    youtube: "",
+    spotify: "",
+    facebook: "",
+});
+const websiteSettingFields = [
+    { key: "site_name", label: "Nama Website", type: "text", group: "Identitas Website" },
+    { key: "site_description", label: "Deskripsi Website", type: "textarea", group: "Identitas Website" },
+    { key: "email", label: "Email Kontak", type: "email", group: "Informasi Kontak" },
+    { key: "phone", label: "Nomor Telepon / WhatsApp", type: "tel", group: "Informasi Kontak" },
+    { key: "address", label: "Alamat / Lokasi", type: "text", group: "Informasi Kontak" },
+    { key: "instagram", label: "Instagram", type: "url", group: "Media Sosial" },
+    { key: "apple_music", label: "Apple Music", type: "url", group: "Media Sosial" },
+    { key: "youtube", label: "YouTube", type: "url", group: "Media Sosial" },
+    { key: "spotify", label: "Spotify", type: "url", group: "Media Sosial" },
+    { key: "facebook", label: "Facebook", type: "url", group: "Media Sosial" },
+];
+const websiteSettingGroups = ["Identitas Website", "Informasi Kontak", "Media Sosial"];
+const siteSettings = ref({
+    site_name: "13 Nadi Records",
+    site_description: "Nada yang menghubungkan cerita.",
+    email: "hello@13nadirecords.com",
+    phone: "+62 812-3456-7890",
+    address: "Jakarta, Indonesia",
+    instagram: "https://instagram.com/13nadi",
+    apple_music: "",
+    youtube: "",
+    spotify: "",
+    facebook: "",
+});
+const adminUsers = ref<any[]>([]);
+const adminUserEditorOpen = ref(false),
+    adminUserSaving = ref(false),
+    adminUserError = ref("");
+const adminUserForm = ref({ id: null as number | null, name: "", username: "", email: "", password: "", password_confirmation: "" });
 const sliderSaving = ref(false),
     sliderError = ref("");
 const sliderForm = ref({
@@ -542,7 +589,7 @@ const modules = [
     ["Galeri Foto", "foto", Image],
     ["Galeri Video", "video", Film],
     ["MUGGEN", "mugen", ClipboardList],
-    ["Pengaturan", "settings", Settings],
+    ["Pengaturan Website", "settings", Settings],
     ["Activity Log", "activity", Activity],
 ] as const;
 const rows = ref<any[]>([]);
@@ -632,16 +679,18 @@ const updateNewsHead = () => {
     if (!article) {
         document.querySelector("#news-structured-data")?.remove();
         if (route.name === "news") return;
-        document.title = "13 Nadi Records — Nada yang Menghubungkan Cerita";
-        ensureMeta('meta[name="description"]', "name", "description", "13 Nadi Records — rumah bagi karya autentik dan suara baru dari Indonesia.");
+        const siteName = siteSettings.value.site_name || "13 Nadi Records";
+        const siteDescription = siteSettings.value.site_description || "Rumah bagi karya autentik dan suara baru dari Indonesia.";
+        document.title = `${siteName} — ${siteDescription}`;
+        ensureMeta('meta[name="description"]', "name", "description", siteDescription);
         ensureMeta('meta[property="og:type"]', "property", "og:type", "website");
-        ensureMeta('meta[property="og:title"]', "property", "og:title", "13 Nadi Records");
-        ensureMeta('meta[property="og:description"]', "property", "og:description", "Nada yang menghubungkan cerita.");
+        ensureMeta('meta[property="og:title"]', "property", "og:title", siteName);
+        ensureMeta('meta[property="og:description"]', "property", "og:description", siteDescription);
         const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
         canonical?.remove();
         return;
     }
-    const title = (article as any).seoTitle || `${article.title} | 13 Nadi Musik`;
+    const title = (article as any).seoTitle || `${article.title} | ${siteSettings.value.site_name || "13 Nadi Musik"}`;
     const description = (article as any).seoDescription || article.excerpt;
     const canonical = new URL(route.path, window.location.origin).toString();
     const image = (article as any).seoImage || article.image;
@@ -679,13 +728,13 @@ const updateNewsHead = () => {
         description,
         ...(image ? { image: new URL(image, window.location.origin).toString() } : {}),
         mainEntityOfPage: canonical,
-        author: { "@type": "Organization", name: "13 Nadi Musik", url: window.location.origin },
-        publisher: { "@type": "Organization", name: "13 Nadi Records", logo: { "@type": "ImageObject", url: new URL("/logo.png", window.location.origin).toString() } },
+        author: { "@type": "Organization", name: siteSettings.value.site_name || "13 Nadi Musik", url: window.location.origin },
+        publisher: { "@type": "Organization", name: siteSettings.value.site_name || "13 Nadi Records", logo: { "@type": "ImageObject", url: new URL("/logo.png", window.location.origin).toString() } },
         datePublished: (article as any).publishedAt,
         dateModified: (article as any).modifiedAt,
     });
 };
-watch([() => route.fullPath, currentNews], updateNewsHead, { flush: "post" });
+watch([() => route.fullPath, currentNews, siteSettings], updateNewsHead, { flush: "post" });
 const currentModule = computed(() =>
     ["slider-create", "slider-edit"].includes(String(route.name))
         ? "slider"
@@ -762,6 +811,113 @@ const removeMugenSubmission = async (id: number) => {
     await apiRequest(`/admin/mugen/submissions/${id}`, { method: "DELETE" }, true);
     await loadMugenAdmin(); flash("Data pendaftar dihapus.");
 };
+const loadWebsiteSettings = async () => {
+    adminLoading.value = true;
+    settingsError.value = "";
+    try {
+        const payload: any = await apiRequest("/admin/settings", {}, true);
+        const saved = Object.fromEntries((payload.data || []).map((item: any) => [item.key, item.value || ""]));
+        websiteSettings.value = { ...websiteSettings.value, ...saved };
+    } catch (e: any) {
+        settingsError.value = e.message || "Pengaturan website gagal dimuat.";
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const saveWebsiteSettings = async () => {
+    settingsSaving.value = true;
+    settingsError.value = "";
+    try {
+        await apiRequest("/admin/settings", {
+            method: "PUT",
+            body: JSON.stringify({ items: websiteSettings.value }),
+        }, true);
+        flash("Pengaturan website berhasil disimpan.");
+    } catch (e: any) {
+        settingsError.value = e.message || "Pengaturan website gagal disimpan.";
+    } finally {
+        settingsSaving.value = false;
+    }
+};
+const loadAdminUsers = async () => {
+    adminLoading.value = true;
+    adminUserError.value = "";
+    try {
+        const payload: any = await apiRequest("/admin/users", {}, true);
+        adminUsers.value = payload.data || [];
+        currentAdmin.value = getAdminUser();
+    } catch (e: any) {
+        adminUserError.value = e.message || "Daftar user admin gagal dimuat.";
+    } finally {
+        adminLoading.value = false;
+    }
+};
+const openAdminUserForm = (user?: any) => {
+    adminUserForm.value = user
+        ? { id: user.id, name: user.name, username: user.username, email: user.email, password: "", password_confirmation: "" }
+        : { id: null, name: "", username: "", email: "", password: "", password_confirmation: "" };
+    adminUserError.value = "";
+    adminUserEditorOpen.value = true;
+};
+const saveAdminUser = async () => {
+    adminUserError.value = "";
+    if (!adminUserForm.value.id && adminUserForm.value.password.length < 12) {
+        adminUserError.value = "Password harus terdiri dari minimal 12 karakter.";
+        return;
+    }
+    if (adminUserForm.value.password && adminUserForm.value.password !== adminUserForm.value.password_confirmation) {
+        adminUserError.value = "Konfirmasi password tidak sama.";
+        return;
+    }
+    adminUserSaving.value = true;
+    try {
+        const editing = Boolean(adminUserForm.value.id);
+        const body: Record<string, string> = {
+            name: adminUserForm.value.name,
+            username: adminUserForm.value.username,
+            email: adminUserForm.value.email,
+        };
+        if (adminUserForm.value.password) {
+            body.password = adminUserForm.value.password;
+            body.password_confirmation = adminUserForm.value.password_confirmation;
+        }
+        const payload: any = await apiRequest(
+            `/admin/users${editing ? `/${adminUserForm.value.id}` : ""}`,
+            { method: editing ? "PUT" : "POST", body: JSON.stringify(body) },
+            true,
+        );
+        if (editing && payload.data.id === currentAdmin.value?.id) {
+            currentAdmin.value = payload.data;
+        }
+        adminUserEditorOpen.value = false;
+        await loadAdminUsers();
+        flash(editing ? "Akun admin diperbarui." : "Akun admin berhasil ditambahkan.");
+    } catch (e: any) {
+        adminUserError.value = e.message || "Akun admin gagal disimpan.";
+    } finally {
+        adminUserSaving.value = false;
+    }
+};
+const deleteAdminUser = async (user: any) => {
+    if (user.id === currentAdmin.value?.id) {
+        flash("Akun yang sedang digunakan tidak dapat dihapus.");
+        return;
+    }
+    if (!confirm(`Hapus akun admin ${user.username}?`)) return;
+    try {
+        await apiRequest(`/admin/users/${user.id}`, { method: "DELETE" }, true);
+        await loadAdminUsers();
+        flash("Akun admin dihapus.");
+    } catch (e: any) {
+        adminUserError.value = e.message || "Akun admin gagal dihapus.";
+    }
+};
+const selectSettingsTab = async (tab: "website" | "users") => {
+    settingsTab.value = tab;
+    adminUserEditorOpen.value = false;
+    if (tab === "users") await loadAdminUsers();
+    else if (!Object.keys(websiteSettings.value).length) await loadWebsiteSettings();
+};
 const loadAdminRows = async () => {
     if (route.name !== "admin" || !currentModule.value) {
         rows.value = [];
@@ -776,6 +932,11 @@ const loadAdminRows = async () => {
         return;
     }
     if (currentModule.value === "mugen") { await loadMugenAdmin(); return; }
+    if (currentModule.value === "settings") {
+        settingsTab.value = "website";
+        await loadWebsiteSettings();
+        return;
+    }
     adminLoading.value = true;
     try {
         const type = moduleType();
@@ -805,7 +966,7 @@ const login = async () => {
     authError.value = "";
     authLoading.value = true;
     try {
-        await loginAdmin(username.value, password.value);
+        currentAdmin.value = await loginAdmin(username.value, password.value);
         const redirect =
             typeof route.query.redirect === "string"
                 ? route.query.redirect
@@ -819,6 +980,7 @@ const login = async () => {
 };
 const logout = async () => {
     await logoutAdmin();
+    currentAdmin.value = null;
     rows.value = [];
     router.replace("/nadiku/login");
 };
@@ -1019,6 +1181,12 @@ const loadPublicReleaseDetails = async () => {
         for (const item of payload.data || []) releaseDetails[item.slug] = item;
     } catch {}
 };
+const loadPublicWebsiteSettings = async () => {
+    try {
+        const payload: any = await apiRequest("/public/settings");
+        siteSettings.value = { ...siteSettings.value, ...(payload.data || {}) };
+    } catch {}
+};
 const loadPublicBanner = async () => {
     try {
         const payload: any = await apiRequest("/public/banners");
@@ -1051,6 +1219,7 @@ const loadAllPublicContent = async () => {
             loadPublicInfo(),
             loadPublicPrograms(),
             loadPublicBanner(),
+            loadPublicWebsiteSettings(),
         ]);
     } finally {
         publicLoading.value = false;
@@ -1622,8 +1791,8 @@ watch(
                     <h1>{{ currentTitle }}</h1>
                 </div>
                 <div class="profile">
-                    <span>NA</span>
-                    <div><b>Nadiku Admin</b><small>Administrator</small></div>
+                    <span>{{ (currentAdmin?.name || currentAdmin?.username || "AD").slice(0, 2).toUpperCase() }}</span>
+                    <div><b>{{ currentAdmin?.name || "Administrator" }}</b><small>{{ currentAdmin?.username ? `@${currentAdmin.username}` : "User Admin" }}</small></div>
                 </div>
             </header>
             <div v-if="currentModule === 'mugen'" class="admin-content mugen-admin">
@@ -2442,6 +2611,57 @@ watch(
                     </div>
                 </form>
             </div>
+            <div v-else-if="currentModule === 'settings'" class="admin-content website-settings-admin">
+                <div class="editor-heading">
+                    <div><span class="eyebrow">KONFIGURASI CMS</span><h2>Pengaturan Website</h2><p>Kelola identitas, informasi kontak, tautan sosial, dan akun administrator.</p></div>
+                </div>
+                <div class="settings-admin-tabs" role="tablist" aria-label="Jenis pengaturan">
+                    <button type="button" role="tab" :aria-selected="settingsTab === 'website'" :class="{ active: settingsTab === 'website' }" @click="selectSettingsTab('website')"><Settings :size="16" />Website</button>
+                    <button type="button" role="tab" :aria-selected="settingsTab === 'users'" :class="{ active: settingsTab === 'users' }" @click="selectSettingsTab('users')"><Users :size="16" />User Admin</button>
+                </div>
+                <template v-if="settingsTab === 'website'">
+                    <div v-if="adminLoading" class="editor-card empty"><Activity /><h3>Memuat pengaturan website...</h3></div>
+                    <form v-else class="website-settings-form" @submit.prevent="saveWebsiteSettings">
+                        <section v-for="group in websiteSettingGroups" :key="group" class="editor-card website-settings-card">
+                            <h3>{{ group }}</h3>
+                            <div class="form-grid">
+                                <label v-for="field in websiteSettingFields.filter((item) => item.group === group)" :key="field.key" class="field" :class="{ 'field-full': field.type === 'textarea' }">
+                                    <span>{{ field.label }}</span>
+                                    <textarea v-if="field.type === 'textarea'" v-model="websiteSettings[field.key]" rows="3" maxlength="500" />
+                                    <input v-else v-model="websiteSettings[field.key]" :type="field.type" :required="['site_name', 'email'].includes(field.key)" maxlength="2048" />
+                                </label>
+                            </div>
+                        </section>
+                        <p v-if="settingsError" class="form-error">{{ settingsError }}</p>
+                        <div class="editor-actions"><button class="button" :disabled="settingsSaving">{{ settingsSaving ? 'Menyimpan...' : 'Simpan Pengaturan Website' }}</button></div>
+                    </form>
+                </template>
+                <section v-else class="admin-user-management">
+                    <div class="admin-user-list-heading"><div><h3>Akun Administrator</h3><p>Kelola siapa saja yang dapat masuk ke dashboard.</p></div><button class="button" type="button" @click="openAdminUserForm()"><Plus :size="16" />Tambah User Admin</button></div>
+                    <form v-if="adminUserEditorOpen" class="editor-card admin-user-form" @submit.prevent="saveAdminUser">
+                        <div class="admin-user-form-heading"><div><span class="eyebrow">{{ adminUserForm.id ? 'PERBARUI AKUN' : 'AKUN BARU' }}</span><h3>{{ adminUserForm.id ? 'Edit User Admin' : 'Tambah User Admin' }}</h3></div><button type="button" class="row-icon" aria-label="Tutup form" @click="adminUserEditorOpen = false"><X :size="17" /></button></div>
+                        <div class="form-grid">
+                            <label class="field"><span>Nama *</span><input v-model.trim="adminUserForm.name" required maxlength="120" autocomplete="name" /></label>
+                            <label class="field"><span>Username *</span><input v-model.trim="adminUserForm.username" required maxlength="50" autocomplete="username" pattern="[A-Za-z0-9_-]+" /></label>
+                            <label class="field field-full"><span>Email *</span><input v-model.trim="adminUserForm.email" type="email" required maxlength="160" autocomplete="email" /></label>
+                            <label class="field"><span>{{ adminUserForm.id ? 'Password baru' : 'Password *' }}</span><input v-model="adminUserForm.password" type="password" :required="!adminUserForm.id" minlength="12" maxlength="255" autocomplete="new-password" /><small>{{ adminUserForm.id ? 'Kosongkan jika tidak ingin mengganti password.' : 'Minimal 12 karakter.' }}</small></label>
+                            <label class="field"><span>Konfirmasi Password{{ adminUserForm.id && !adminUserForm.password ? '' : ' *' }}</span><input v-model="adminUserForm.password_confirmation" type="password" :required="!adminUserForm.id || Boolean(adminUserForm.password)" minlength="12" maxlength="255" autocomplete="new-password" /></label>
+                        </div>
+                        <p v-if="adminUserError" class="form-error">{{ adminUserError }}</p>
+                        <div class="editor-actions"><button type="button" class="cancel-button" @click="adminUserEditorOpen = false">Batal</button><button class="button" :disabled="adminUserSaving">{{ adminUserSaving ? 'Menyimpan...' : 'Simpan Akun' }}</button></div>
+                    </form>
+                    <div v-if="adminLoading" class="editor-card empty"><Activity /><h3>Memuat user admin...</h3></div>
+                    <p v-else-if="adminUserError && !adminUserEditorOpen" class="form-error">{{ adminUserError }}</p>
+                    <div v-else-if="!adminUsers.length" class="editor-card empty"><Users /><h3>Belum ada user admin</h3><p>Tambahkan akun admin untuk mulai mengelola akses dashboard.</p></div>
+                    <div v-else class="admin-user-list">
+                        <article v-for="user in adminUsers" :key="user.id" class="editor-card admin-user-row">
+                            <span class="admin-user-avatar">{{ (user.name || user.username).slice(0, 1).toUpperCase() }}</span>
+                            <div class="admin-user-identity"><b>{{ user.name }} <small v-if="user.id === currentAdmin?.id" class="current-admin-badge">Anda</small></b><span>@{{ user.username }}</span><small>{{ user.email }}</small></div>
+                            <div class="admin-user-actions"><button type="button" class="row-icon" :aria-label="`Edit ${user.username}`" @click="openAdminUserForm(user)"><Pencil :size="16" /></button><button type="button" class="row-icon danger" :disabled="user.id === currentAdmin?.id || adminUsers.length <= 1" :aria-label="`Hapus ${user.username}`" @click="deleteAdminUser(user)"><Trash2 :size="16" /></button></div>
+                        </article>
+                    </div>
+                </section>
+            </div>
             <div v-else class="admin-content">
                 <div class="page-actions">
                     <p>
@@ -3092,7 +3312,7 @@ watch(
                         bersama 13 Nadi Records.
                     </p>
                 </div>
-                <a class="button" href="mailto:hello@13nadi.com"
+                <a class="button" :href="`mailto:${siteSettings.email}`"
                     >Hubungi Kami <ArrowRight :size="18"
                 /></a>
             </section>
@@ -3337,7 +3557,7 @@ watch(
                         Dari ide pertama hingga karya bertemu audiens—kami hadir
                         sebagai partner kreatif yang tumbuh bersama Anda.
                     </p>
-                    <a class="button" href="mailto:hello@13nadi.com"
+                    <a class="button" :href="`mailto:${siteSettings.email}`"
                         >Mulai Kolaborasi <ArrowRight :size="17"
                     /></a>
                 </div>
@@ -3792,22 +4012,22 @@ watch(
                 <div class="footer-socials">
                     <b>Ikuti Kami</b>
                     <div>
-                        <a class="social-logo spotify-logo" href="#" aria-label="Spotify"><i></i><i></i><i></i></a>
-                        <a class="social-logo apple-logo" href="#" aria-label="Apple Music">♪</a>
-                        <a class="social-logo youtube-logo" href="#" aria-label="YouTube"><i></i></a>
-                        <a class="social-logo instagram-logo" href="#" aria-label="Instagram"><i></i></a>
+                        <a v-if="siteSettings.spotify" class="social-logo spotify-logo" :href="siteSettings.spotify" target="_blank" rel="noopener noreferrer" aria-label="Spotify"><i></i><i></i><i></i></a>
+                        <a v-if="siteSettings.apple_music" class="social-logo apple-logo" :href="siteSettings.apple_music" target="_blank" rel="noopener noreferrer" aria-label="Apple Music">♪</a>
+                        <a v-if="siteSettings.youtube" class="social-logo youtube-logo" :href="siteSettings.youtube" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i></i></a>
+                        <a v-if="siteSettings.instagram" class="social-logo instagram-logo" :href="siteSettings.instagram" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i></i></a>
                     </div>
                 </div>
                 <div>
                     <b>Hubungi Kami</b
-                    ><a href="mailto:hello@13nadirecords.com"
-                        >hello@13nadirecords.com</a
-                    ><a href="tel:+6281234567890">+62 812-3456-7890</a
-                    ><span>Jakarta, Indonesia</span>
+                    ><a :href="`mailto:${siteSettings.email}`"
+                        >{{ siteSettings.email }}</a
+                    ><a :href="'tel:' + siteSettings.phone.replace(/[^0-9+]/g, '')">{{ siteSettings.phone }}</a
+                    ><span>{{ siteSettings.address }}</span>
                 </div>
             </div>
             <div class="wrap copyright">
-                © 2026 13 Nadi Records. All rights reserved.
+                © {{ new Date().getFullYear() }} {{ siteSettings.site_name }}. All rights reserved.
             </div>
         </footer>
     </div>

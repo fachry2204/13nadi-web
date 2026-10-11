@@ -6,7 +6,12 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 class NadikuSeeder extends Seeder {public function run():void{
- User::updateOrCreate(['username'=>'admin'],['name'=>'Nadiku Admin','email'=>'admin@13nadi.local','password'=>Hash::make('admin')]);
+ $adminUsername=(string)config('nadiku.admin.username');
+ $adminPassword=(string)config('nadiku.admin.password');
+ $adminEmail=(string)config('nadiku.admin.email');
+ if($adminUsername!==''&&$adminPassword!==''&&$adminEmail!==''){
+  User::updateOrCreate(['username'=>$adminUsername],['name'=>config('nadiku.admin.name','Nadiku Admin'),'email'=>$adminEmail,'password'=>Hash::make($adminPassword)]);
+ }
  $items=[['release','Pulang Perlahan','pulang-perlahan','Arunika Senja','Indie Pop','https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=85'],['release','Ruang yang Sama','ruang-yang-sama','KALA','Alternative','https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=900&q=85'],['release','Setelah Hujan','setelah-hujan','Nara Aksara','Folk','https://images.unsplash.com/photo-1524650359799-842906ca1c06?auto=format&fit=crop&w=900&q=85'],['artist','Arunika Senja','arunika-senja','Indie Pop','Musisi dengan cerita yang hangat.','https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=85'],['artist','KALA','kala','Alternative Rock','Energi baru dari selatan.','https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=800&q=85']];
  foreach($items as $i=>$x)ContentItem::updateOrCreate(['type'=>$x[0],'slug'=>$x[2]],['title'=>$x[1],'subtitle'=>$x[3],'description'=>$x[4],'image_url'=>$x[5],'sort_order'=>$i,'is_active'=>true]);
  ContentItem::where('type','slider')->where('slug','nada-yang-menghubungkan-cerita')->delete();
@@ -59,5 +64,16 @@ class NadikuSeeder extends Seeder {public function run():void{
   ['digital-distribution','Digital Distribution','Berkolaborasi','Distribusi dan kampanye digital yang membantu musik menjangkau komunitas pendengar yang tepat.',['kind'=>'service','link'=>'#kolaborasi','icon'=>'activity']],
  ];
  foreach($information as $i=>$item)ContentItem::updateOrCreate(['type'=>'info','slug'=>$item[0]],['title'=>$item[1],'subtitle'=>$item[2],'description'=>$item[3],'metadata'=>$item[4],'sort_order'=>$i,'is_active'=>true]);
- foreach(['site_name'=>'13 Nadi Records','email'=>'hello@13nadi.com','instagram'=>'https://instagram.com/13nadi'] as $key=>$value)Setting::updateOrCreate(['key'=>$key],['group'=>'identity','value'=>$value]);
+ foreach([
+  'site_name'=>'13 Nadi Records',
+  'site_description'=>'Nada yang menghubungkan cerita.',
+  'email'=>'hello@13nadirecords.com',
+  'phone'=>'+62 812-3456-7890',
+  'address'=>'Jakarta, Indonesia',
+  'instagram'=>'https://instagram.com/13nadi',
+  'apple_music'=>'',
+  'youtube'=>'',
+  'spotify'=>'',
+  'facebook'=>'',
+ ] as $key=>$value)Setting::firstOrCreate(['key'=>$key],['group'=>'identity','value'=>$value]);
 }}

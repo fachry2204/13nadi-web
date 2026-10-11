@@ -16,6 +16,8 @@ Template `.env.example` menggunakan MySQL untuk deployment Plesk. Ganti `DB_DATA
 
 Buka `http://127.0.0.1:8002`. Portal admin berada di `/nadiku/login`; autentikasi menggunakan username dan sesi Sanctum. Untuk pengembangan aset secara langsung, jalankan `npm run dev` pada terminal kedua.
 
+Tidak ada kredensial admin bawaan di source code. Untuk instalasi baru, isi `NADIKU_ADMIN_NAME`, `NADIKU_ADMIN_USERNAME`, `NADIKU_ADMIN_EMAIL`, dan `NADIKU_ADMIN_PASSWORD` di `.env` lokal (gunakan password unik minimal 12 karakter), lalu jalankan `php artisan db:seed`. Untuk instalasi yang sudah berjalan, kelola akun lewat **Pengaturan Website → User Admin** setelah masuk ke CMS.
+
 ## Pemeriksaan
 
 ```powershell
