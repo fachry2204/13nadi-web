@@ -114,15 +114,17 @@ class AdminContentTest extends TestCase
         $response = $this->postJson('/api/v1/admin/news', [
             'title' => 'Cerita Baru',
             'slug' => 'cerita-baru',
-            'description' => '<h2 onclick="alert(1)">Judul</h2><p><strong>Isi artikel</strong> <script>alert(1)</script></p><a href="javascript:alert(1)">Tautan</a>',
+            'description' => '<h2 onclick="alert(1)">Judul</h2><p><strong>Isi artikel</strong> <script>alert(1)</script></p><img src="/uploads/isi-berita.jpg" onerror="alert(1)"><img src="javascript:alert(1)"><a href="javascript:alert(1)">Tautan</a>',
             'is_active' => true,
         ])->assertCreated();
 
         $description = $response->json('data.description');
         $this->assertStringContainsString('<h2>Judul</h2>', $description);
         $this->assertStringContainsString('<strong>Isi artikel</strong>', $description);
+        $this->assertStringContainsString('<img src="/uploads/isi-berita.jpg" alt="Gambar artikel">', $description);
         $this->assertStringNotContainsString('script', $description);
         $this->assertStringNotContainsString('onclick', $description);
+        $this->assertStringNotContainsString('onerror', $description);
         $this->assertStringNotContainsString('javascript:', $description);
     }
 }

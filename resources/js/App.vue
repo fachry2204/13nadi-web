@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import {
     Activity,
     ArrowRight,
-    Bold,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
@@ -15,14 +14,9 @@ import {
     ClipboardList,
     GripVertical,
     Handshake,
-    Heading2,
     Image,
     ImageUp,
     LayoutDashboard,
-    Italic,
-    Link2,
-    List,
-    ListOrdered,
     LogOut,
     Menu,
     MapPin,
@@ -31,17 +25,17 @@ import {
     Pencil,
     Plus,
     Radio,
-    Quote,
     Search,
     Settings,
     Trash2,
     Users,
-    Underline,
     X,
 } from "@lucide/vue";
 import slide1Image from "./assets/slide1.jpg";
 import slide2Image from "./assets/slide2.jpg";
+import "./NewsDetail.css";
 import { apiRequest, loginAdmin, logoutAdmin, uploadAdminImage } from "./api";
+const NewsWysiwygEditor = defineAsyncComponent(() => import("./components/NewsWysiwygEditor.vue"));
 
 const route = useRoute(),
     router = useRouter(),
@@ -73,7 +67,6 @@ const contentSaving = ref(false),
 const imageUploading = ref<"slider" | "content" | "">(""),
     imageUploadError = ref("");
 const albumImages = ref<string[]>([]);
-const newsEditor = ref<HTMLElement | null>(null);
 const publicLoading = ref(true);
 type MugenField = { id?: number; key: string; label: string; type: string; options: string[]; placeholder?: string; is_required: boolean; is_active: boolean };
 const mugenFields = ref<MugenField[]>([]), mugenSubmissions = ref<any[]>([]);
@@ -114,44 +107,32 @@ const contentForm = ref({
         genre: "",
         music_genre: "",
         youtube_url: "",
+        youtube_urls: [""] as string[],
         date: "",
         duration: "",
-        link_enabled: false,
-    } as Record<string, string | boolean>,
+        open_new_tab: true,
+    } as Record<string, any>,
 });
+const releaseVideoInputs = computed(() =>
+    Array.isArray(contentForm.value.metadata.youtube_urls)
+        ? contentForm.value.metadata.youtube_urls as string[]
+        : [],
+);
+const addReleaseVideoUrl = () => {
+    if (!Array.isArray(contentForm.value.metadata.youtube_urls))
+        contentForm.value.metadata.youtube_urls = [];
+    contentForm.value.metadata.youtube_urls.push("");
+};
+const removeReleaseVideoUrl = (index: number) => {
+    contentForm.value.metadata.youtube_urls.splice(index, 1);
+    if (!contentForm.value.metadata.youtube_urls.length)
+        contentForm.value.metadata.youtube_urls.push("");
+};
 const stripHtml = (html = "") =>
     html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 const articleBody = (article: { content?: string; excerpt?: string }) =>
     article.content || `<p>${article.excerpt || ""}</p>`;
-const syncNewsEditor = () => {
-    if (
-        newsEditor.value &&
-        newsEditor.value.innerHTML !== contentForm.value.description
-    ) {
-        newsEditor.value.innerHTML = contentForm.value.description;
-    }
-};
-const updateNewsBody = (event: Event) => {
-    contentForm.value.description = (event.target as HTMLElement).innerHTML;
-};
-const formatNewsBody = (command: string, value?: string) => {
-    newsEditor.value?.focus();
-    document.execCommand(command, false, value);
-    if (newsEditor.value) contentForm.value.description = newsEditor.value.innerHTML;
-};
-const addNewsLink = () => {
-    const url = window.prompt("Masukkan URL tautan");
-    if (!url) return;
-    formatNewsBody("createLink", url);
-};
-watch(
-    () => contentForm.value.description,
-    () => {
-        if (currentModule.value === "berita") requestAnimationFrame(syncNewsEditor);
-    },
-    { flush: "post" },
-);
-const homeBanner = ref({ image: "", link: "", linkEnabled: false, title: "" });
+const homeBanner = ref({ image: "", link: "", linkEnabled: false, openNewTab: true, title: "" });
 const aboutTitle = ref("13 Nadi Musik");
 const aboutImage = ref("");
 const aboutParagraphOne = ref(
@@ -581,30 +562,24 @@ const currentReleaseMusicGenre = computed(
     () =>
         releaseDetails[String(route.params.slug)]?.metadata?.music_genre || "",
 );
-const currentReleaseYoutubeUrl = computed(
-    () =>
-        releaseDetails[String(route.params.slug)]?.metadata?.youtube_url || "",
-);
-const youtubeEmbedUrl = computed(() => {
-    const value = currentReleaseYoutubeUrl.value.trim();
-    if (!value) return "";
-    try {
-        const url = new URL(value);
-        const host = url.hostname.toLowerCase().replace(/^www\./, "");
-        let id = "";
-        if (host === "youtu.be")
-            id = url.pathname.split("/").filter(Boolean)[0] || "";
-        else if (["youtube.com", "m.youtube.com"].includes(host)) {
-            if (url.pathname === "/watch") id = url.searchParams.get("v") || "";
-            else if (/^\/(shorts|embed)\//.test(url.pathname))
-                id = url.pathname.split("/").filter(Boolean)[1] || "";
-        }
-        if (!/^[\w-]{6,20}$/.test(id)) return "";
-        return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
-    } catch {
-        return "";
-    }
+const currentReleaseVideoUrls = computed<string[]>(() => {
+    const metadata = releaseDetails[String(route.params.slug)]?.metadata || {};
+    const urls = Array.isArray(metadata.youtube_urls)
+        ? metadata.youtube_urls
+        : metadata.youtube_url ? [metadata.youtube_url] : [];
+    return urls.map((url: unknown) => String(url || "").trim()).filter(Boolean);
 });
+const youtubeEmbedForUrl = (value: string) => {
+    const id = getYouTubeId(value.trim());
+    return /^[\w-]{6,20}$/.test(id)
+        ? `https://www.youtube-nocookie.com/embed/${id}?rel=0`
+        : "";
+};
+const releaseVideos = computed(() =>
+    currentReleaseVideoUrls.value
+        .map((url, index) => ({ url, index, embedUrl: youtubeEmbedForUrl(url) }))
+        .filter((video) => video.embedUrl),
+);
 const spotifyEmbedUrl = computed(() => {
     const value = currentRelease.value?.externalUrl?.trim();
     if (!value) return "";
@@ -643,6 +618,74 @@ const currentArtist = computed(() =>
 const currentNews = computed(() =>
     news.find((x) => x.slug === route.params.slug),
 );
+const updateNewsHead = () => {
+    const article = route.name === "news" ? currentNews.value : undefined;
+    const ensureMeta = (selector: string, attribute: string, key: string, value: string) => {
+        let element = document.head.querySelector<HTMLMetaElement>(selector);
+        if (!element) {
+            element = document.createElement("meta");
+            element.setAttribute(attribute, key);
+            document.head.append(element);
+        }
+        element.content = value;
+    };
+    if (!article) {
+        document.querySelector("#news-structured-data")?.remove();
+        if (route.name === "news") return;
+        document.title = "13 Nadi Records — Nada yang Menghubungkan Cerita";
+        ensureMeta('meta[name="description"]', "name", "description", "13 Nadi Records — rumah bagi karya autentik dan suara baru dari Indonesia.");
+        ensureMeta('meta[property="og:type"]', "property", "og:type", "website");
+        ensureMeta('meta[property="og:title"]', "property", "og:title", "13 Nadi Records");
+        ensureMeta('meta[property="og:description"]', "property", "og:description", "Nada yang menghubungkan cerita.");
+        const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+        canonical?.remove();
+        return;
+    }
+    const title = (article as any).seoTitle || `${article.title} | 13 Nadi Musik`;
+    const description = (article as any).seoDescription || article.excerpt;
+    const canonical = new URL(route.path, window.location.origin).toString();
+    const image = (article as any).seoImage || article.image;
+    document.title = title;
+    setMeta('meta[name="description"]', "name", "description", description);
+    setMeta('meta[property="og:type"]', "property", "og:type", "article");
+    setMeta('meta[property="og:title"]', "property", "og:title", title);
+    setMeta('meta[property="og:description"]', "property", "og:description", description);
+    setMeta('meta[property="og:url"]', "property", "og:url", canonical);
+    setMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image");
+    if (image) {
+        setMeta('meta[property="og:image"]', "property", "og:image", new URL(image, window.location.origin).toString());
+        setMeta('meta[name="twitter:image"]', "name", "twitter:image", new URL(image, window.location.origin).toString());
+    }
+    if ((article as any).publishedAt) setMeta('meta[property="article:published_time"]', "property", "article:published_time", (article as any).publishedAt);
+    if ((article as any).modifiedAt) setMeta('meta[property="article:modified_time"]', "property", "article:modified_time", (article as any).modifiedAt);
+    let canonicalElement = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonicalElement) {
+        canonicalElement = document.createElement("link");
+        canonicalElement.rel = "canonical";
+        document.head.append(canonicalElement);
+    }
+    canonicalElement.href = canonical;
+    let structuredData = document.head.querySelector<HTMLScriptElement>("#news-structured-data");
+    if (!structuredData) {
+        structuredData = document.createElement("script");
+        structuredData.id = "news-structured-data";
+        structuredData.type = "application/ld+json";
+        document.head.append(structuredData);
+    }
+    structuredData.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        headline: article.title,
+        description,
+        ...(image ? { image: new URL(image, window.location.origin).toString() } : {}),
+        mainEntityOfPage: canonical,
+        author: { "@type": "Organization", name: "13 Nadi Musik", url: window.location.origin },
+        publisher: { "@type": "Organization", name: "13 Nadi Records", logo: { "@type": "ImageObject", url: new URL("/logo.png", window.location.origin).toString() } },
+        datePublished: (article as any).publishedAt,
+        dateModified: (article as any).modifiedAt,
+    });
+};
+watch([() => route.fullPath, currentNews], updateNewsHead, { flush: "post" });
 const currentModule = computed(() =>
     ["slider-create", "slider-edit"].includes(String(route.name))
         ? "slider"
@@ -846,6 +889,11 @@ const loadPublicContent = async () => {
                     excerpt: stripHtml(x.description || ""),
                     content: x.description || "",
                     image: x.image_url || "",
+                    seoTitle: x.metadata?.seo_title || "",
+                    seoDescription: x.metadata?.seo_description || "",
+                    seoImage: x.metadata?.seo_image || x.image_url || "",
+                    publishedAt: x.created_at || "",
+                    modifiedAt: x.updated_at || "",
                 })),
             );
         if (groups.photo?.length) {
@@ -979,15 +1027,17 @@ const loadPublicBanner = async () => {
             ? {
                   image: banner.image_url || "",
                   link: banner.external_url || "",
-                  linkEnabled: Boolean(banner.metadata?.link_enabled),
+                  linkEnabled: Boolean(banner.external_url),
+                  openNewTab: banner.metadata?.open_new_tab !== false,
                   title: banner.title || "Banner 13 Nadi",
               }
-            : { image: "", link: "", linkEnabled: false, title: "" };
+            : { image: "", link: "", linkEnabled: false, openNewTab: true, title: "" };
     } catch {
         homeBanner.value = {
             image: "",
             link: "",
             linkEnabled: false,
+            openNewTab: true,
             title: "",
         };
     }
@@ -1237,6 +1287,7 @@ const resetContentForm = () => {
             genre: "",
             music_genre: "",
             youtube_url: "",
+            youtube_urls: [""] as string[],
             date: "",
             duration: "",
             link_enabled: false,
@@ -1270,9 +1321,12 @@ const loadContentForm = async () => {
                 genre: x.metadata?.genre || "",
                 music_genre: x.metadata?.music_genre || "",
                 youtube_url: x.metadata?.youtube_url || "",
+                youtube_urls: Array.isArray(x.metadata?.youtube_urls)
+                    ? x.metadata.youtube_urls.filter(Boolean)
+                    : x.metadata?.youtube_url ? [x.metadata.youtube_url] : [""],
                 date: x.metadata?.date || "",
                 duration: x.metadata?.duration || "",
-                link_enabled: Boolean(x.metadata?.link_enabled),
+                open_new_tab: x.metadata?.open_new_tab !== false,
             },
         };
         albumImages.value = Array.isArray(x.metadata?.images)
@@ -1306,13 +1360,27 @@ const saveContent = async () => {
                 .replace(/(^-|-$)/g, "") || `konten-${Date.now()}`;
         const body = {
             ...contentForm.value,
-            slug: contentForm.value.slug.trim() || generatedSlug,
+            slug: currentModule.value === "banner"
+                ? null
+                : contentForm.value.slug.trim() || generatedSlug,
             metadata: Object.fromEntries(
                 Object.entries(contentForm.value.metadata).filter(
-                    ([, v]) => v !== "",
+                    ([key, value]) => value !== "" && (key !== "open_new_tab" || currentModule.value === "banner"),
                 ),
             ),
         };
+        if (currentModule.value === "rilisan") {
+            const videoUrls = releaseVideoInputs.value
+                .map((url) => url.trim())
+                .filter(Boolean);
+            delete body.metadata.youtube_urls;
+            delete body.metadata.youtube_url;
+            if (videoUrls.length) {
+                body.metadata.youtube_urls = videoUrls;
+                // Preserve the original field for older clients and saved records.
+                body.metadata.youtube_url = videoUrls[0];
+            }
+        }
         if (currentModule.value === "foto") {
             body.image_url = albumImages.value[0] || "";
             body.metadata = { images: albumImages.value };
@@ -1715,37 +1783,6 @@ watch(
                             >
                                 {{ imageUploadError }}
                             </p>
-                            <label
-                                v-if="currentModule === 'banner'"
-                                class="field field-full"
-                            >
-                                <span>Link Tujuan Banner</span>
-                                <input
-                                    v-model="contentForm.external_url"
-                                    type="url"
-                                    placeholder="https://..."
-                                />
-                                <small
-                                    >Pengunjung diarahkan ke alamat ini saat
-                                    banner diklik.</small
-                                >
-                            </label>
-                            <label
-                                v-if="currentModule === 'banner'"
-                                class="check-field field-full"
-                            >
-                                <input
-                                    v-model="contentForm.metadata.link_enabled"
-                                    type="checkbox"
-                                />
-                                <span
-                                    ><b>Aktifkan link banner</b
-                                    ><small
-                                        >Jika nonaktif, gambar tetap tampil
-                                        tetapi tidak dapat diklik.</small
-                                    ></span
-                                >
-                            </label>
                             <label class="field field-full"
                                 ><span>URL Tujuan Tombol</span
                                 ><input
@@ -1867,7 +1904,7 @@ watch(
                 </div>
                 <form
                     v-else
-                    class="editor-layout"
+                    class="editor-layout content-editor-layout"
                     @submit.prevent="saveContent"
                 >
                     <div class="editor-card">
@@ -1885,12 +1922,19 @@ watch(
                                     required
                                     maxlength="160"
                                     :placeholder="currentModule === 'foto' ? 'Contoh: Live Session Bogor 2026' : 'Masukkan judul'" /></label
-                            ><label class="field"
+                            ><label v-if="currentModule !== 'banner'" class="field"
                                 ><span>Slug URL</span
                                 ><input
                                     v-model="contentForm.slug"
                                     maxlength="180"
                                     placeholder="Terisi otomatis jika dikosongkan" /></label
+                            ><label v-else class="field"
+                                ><span>URL Tujuan Banner</span
+                                ><input
+                                    v-model="contentForm.external_url"
+                                    type="url"
+                                    placeholder="https://contoh.com/halaman"
+                                /><small>Alamat yang dibuka saat banner diklik.</small></label
                             ><label class="field"
                                 ><span>Urutan Tampil</span
                                 ><input
@@ -1919,31 +1963,9 @@ watch(
                                     rows="7"
                                     placeholder="Masukkan deskripsi konten"
                                 ></textarea></label
-                            ><section v-else class="field field-full news-editor-field">
+                            ><section v-else-if="currentModule === 'berita'" class="field field-full news-editor-field">
                                 <span>Isi Berita</span>
-                                <div class="news-editor-toolbar" role="toolbar" aria-label="Format isi berita">
-                                    <button type="button" title="Judul bagian" aria-label="Judul bagian" @click="formatNewsBody('formatBlock', 'h2')"><Heading2 /></button>
-                                    <button type="button" title="Tebal" aria-label="Tebal" @click="formatNewsBody('bold')"><Bold /></button>
-                                    <button type="button" title="Miring" aria-label="Miring" @click="formatNewsBody('italic')"><Italic /></button>
-                                    <button type="button" title="Garis bawah" aria-label="Garis bawah" @click="formatNewsBody('underline')"><Underline /></button>
-                                    <i aria-hidden="true"></i>
-                                    <button type="button" title="Daftar poin" aria-label="Daftar poin" @click="formatNewsBody('insertUnorderedList')"><List /></button>
-                                    <button type="button" title="Daftar bernomor" aria-label="Daftar bernomor" @click="formatNewsBody('insertOrderedList')"><ListOrdered /></button>
-                                    <button type="button" title="Kutipan" aria-label="Kutipan" @click="formatNewsBody('formatBlock', 'blockquote')"><Quote /></button>
-                                    <i aria-hidden="true"></i>
-                                    <button type="button" title="Tambahkan tautan" aria-label="Tambahkan tautan" @click="addNewsLink"><Link2 /></button>
-                                    <button type="button" title="Bersihkan format" aria-label="Bersihkan format" class="editor-clear" @click="formatNewsBody('removeFormat')">Tx</button>
-                                </div>
-                                <div
-                                    ref="newsEditor"
-                                    class="news-rich-editor"
-                                    contenteditable="true"
-                                    role="textbox"
-                                    aria-multiline="true"
-                                    data-placeholder="Tulis isi berita di sini..."
-                                    @input="updateNewsBody"
-                                ></div>
-                                <small>Gunakan toolbar untuk menulis artikel, kutipan, daftar, dan tautan. Tekan Enter untuk paragraf baru.</small>
+                                <NewsWysiwygEditor v-model="contentForm.description" />
                             </section
                             ><label
                                 v-if="currentModule === 'tentang'"
@@ -1955,6 +1977,14 @@ watch(
                                     "
                                     rows="7"
                                 ></textarea></label
+                            ><label
+                                v-if="currentModule === 'banner'"
+                                class="check-field field-full"
+                            ><input
+                                    v-model="contentForm.metadata.open_new_tab"
+                                    type="checkbox"
+                                /><span><b>Buka di tab baru</b><small>Jika tidak dicentang, tautan dibuka di tab yang sama.</small></span>
+                            </label
                             ><label
                                 v-if="currentModule === 'rilisan'"
                                 class="field"
@@ -2107,16 +2137,20 @@ watch(
                             ><label
                                 v-if="currentModule === 'rilisan'"
                                 class="field field-full"
-                                ><span>Link Video YouTube</span
-                                ><input
-                                    v-model="contentForm.metadata.youtube_url"
-                                    type="url"
-                                    placeholder="https://www.youtube.com/watch?v=..."
-                                /><small
-                                    >Mendukung link YouTube biasa, youtu.be, dan
-                                    Shorts. Video akan tampil pada detail
-                                    rilisan.</small
-                                ></label
+                                ><span>Link Video Rilisan</span>
+                                <div class="release-video-link-list">
+                                    <div v-for="(url, index) in releaseVideoInputs" :key="index" class="release-video-link-row">
+                                        <input
+                                            v-model="contentForm.metadata.youtube_urls[index]"
+                                            type="url"
+                                            :aria-label="`Link video rilisan ${index + 1}`"
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                        />
+                                        <button v-if="releaseVideoInputs.length > 1 || url" type="button" class="release-video-remove" :aria-label="`Hapus link video ${index + 1}`" @click="removeReleaseVideoUrl(index)"><Trash2 :size="16" /></button>
+                                    </div>
+                                    <button type="button" class="release-video-add" @click="addReleaseVideoUrl"><Plus :size="16" /> Tambah link video</button>
+                                </div>
+                                <small>Mendukung link YouTube biasa, youtu.be, dan Shorts. Semua video akan tampil pada detail rilisan.</small></label
                             ><label class="check-field field-full"
                                 ><input
                                     v-model="contentForm.is_active"
@@ -2155,44 +2189,6 @@ watch(
                             </button>
                         </div>
                     </div>
-                    <aside class="editor-preview">
-                        <span>PREVIEW KONTEN</span>
-                        <div>
-                            <img
-                                v-if="contentForm.image_url"
-                                :src="contentForm.image_url"
-                                alt="Preview konten"
-                            />
-                            <div v-else class="preview-empty">
-                                <Image /><small
-                                    >Upload gambar untuk melihat preview</small
-                                >
-                            </div>
-                            <div class="preview-shade"></div>
-                            <section>
-                                <small>{{
-                                    contentForm.subtitle ||
-                                    modules.find(
-                                        (x) => x[1] === currentModule,
-                                    )?.[0]
-                                }}</small>
-                                <h3>
-                                    {{
-                                        contentForm.title ||
-                                        "Judul akan tampil di sini"
-                                    }}
-                                </h3>
-                                <p>
-                                    {{
-                                        (currentModule === "berita"
-                                            ? stripHtml(contentForm.description)
-                                            : contentForm.description) ||
-                                        "Deskripsi akan tampil di area ini."
-                                    }}
-                                </p>
-                            </section>
-                        </div>
-                    </aside>
                 </form>
             </div>
             <div v-else-if="!currentModule" class="admin-content">
@@ -2827,7 +2823,7 @@ watch(
                         v-if="homeBanner.linkEnabled && homeBanner.link"
                         class="home-banner-frame is-linked"
                         :href="homeBanner.link"
-                        target="_blank"
+                        :target="homeBanner.openNewTab ? '_blank' : '_self'"
                         rel="noopener noreferrer"
                         :aria-label="homeBanner.title"
                     >
@@ -2917,7 +2913,6 @@ watch(
                         >
                             <div class="card-art-wrap">
                                 <img :src="r.image" :alt="`Sampul ${r.title}`" />
-                                <div class="vinyl-ornament"></div>
                             </div>
                             <div class="release-info">
                                 <h3>{{ r.title }}</h3>
@@ -3174,7 +3169,6 @@ watch(
                     >
                         <div class="card-art-wrap">
                             <img :src="r.image" :alt="`Sampul ${r.title}`" />
-                            <div class="vinyl-ornament"></div>
                         </div>
                         <div class="release-info">
                             <h3>{{ r.title }}</h3>
@@ -3448,6 +3442,20 @@ watch(
             v-else-if="route.name === 'release' && currentRelease"
             class="release-detail wrap"
         >
+            <section class="inner-hero release-detail-hero">
+                <div class="wrap">
+                    <span>DISKOGRAFI 13 NADI</span>
+                    <h1>Rilis Musik</h1>
+                    <p>Karya terbaru dari musisi 13 Nadi—setiap rilisan membawa karakter, cerita, dan warna yang berbeda.</p>
+                </div>
+            </section>
+            <nav class="release-breadcrumb" aria-label="Breadcrumb">
+                <RouterLink to="/">Beranda</RouterLink>
+                <ChevronRight :size="14" />
+                <RouterLink to="/rilis">Rilisan</RouterLink>
+                <ChevronRight :size="14" />
+                <span aria-current="page">{{ currentRelease.title }}</span>
+            </nav>
             <section class="release-overview">
                 <div class="release-cover-frame vinyl-frame">
                     <img
@@ -3481,7 +3489,28 @@ watch(
                     </div>
                     <span v-else class="eyebrow">RILISAN 13 NADI</span>
                     <h1>{{ currentRelease.title }}</h1>
-                    <h2>{{ currentRelease.artist }}</h2>
+                    <h2 class="release-artist">Dibawakan oleh {{ currentRelease.artist }}</h2>
+                    <div class="release-description">
+                        <span class="release-description-label"><Music2 :size="15" /> TENTANG RILISAN</span>
+                        <div v-if="currentReleaseDescription" v-html="currentReleaseDescription"></div>
+                        <p v-else>
+                            {{ currentRelease.title }} adalah {{ currentRelease.genre || "rilisan musik" }}
+                            <template v-if="currentReleaseMusicGenre">bergenre {{ currentReleaseMusicGenre }}</template>
+                            dari {{ currentRelease.artist }}<template v-if="currentRelease.year"> yang dirilis pada {{ currentRelease.year }}</template>.
+                        </p>
+                    </div>
+                    <div class="release-facts" aria-label="Informasi rilisan">
+                        <div v-if="currentRelease.genre"><small>FORMAT</small><b>{{ currentRelease.genre }}</b></div>
+                        <div v-if="currentReleaseMusicGenre"><small>GENRE MUSIK</small><b>{{ currentReleaseMusicGenre }}</b></div>
+                        <div v-if="currentRelease.year"><small>TAHUN RILIS</small><b>{{ currentRelease.year }}</b></div>
+                    </div>
+                    <a
+                        v-if="currentRelease.externalUrl && !spotifyEmbedUrl"
+                        class="button release-listen-link"
+                        :href="currentRelease.externalUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >Dengarkan rilisan <ExternalLink :size="15" /></a>
                     <section
                         v-if="spotifyEmbedUrl"
                         class="spotify-player inline-player"
@@ -3515,30 +3544,32 @@ watch(
                 </article>
             </section>
             <section
-                v-if="youtubeEmbedUrl"
+                v-if="releaseVideos.length"
                 class="release-media"
             >
                 <div class="release-media-heading">
-                    <span><Music2 :size="18" /> TONTON VIDEO</span>
-                    <h3>Rasakan rilisan dalam visual.</h3>
+                    <span><Music2 :size="18" /> VIDEO RILISAN</span>
+                    <h3>{{ releaseVideos.length > 1 ? "Tonton semua video rilisan." : "Rasakan rilisan dalam visual." }}</h3>
+                    <p>{{ releaseVideos.length }} video terkait rilisan ini.</p>
                 </div>
                 <div class="release-media-grid">
                     <section
-                        v-if="youtubeEmbedUrl"
+                        v-for="video in releaseVideos"
+                        :key="video.url"
                         class="youtube-player"
                         aria-label="Video YouTube rilisan"
                     >
                         <div class="youtube-player-heading">
                             <span>▶</span>
                             <div>
-                                <small>VIDEO MUSIK</small
+                                <small>VIDEO {{ String(video.index + 1).padStart(2, "0") }}</small
                                 ><b
                                     >{{ currentRelease.title }} ·
                                     {{ currentRelease.artist }}</b
                                 >
                             </div>
                             <a
-                                :href="currentReleaseYoutubeUrl"
+                                :href="video.url"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 >Buka YouTube <ExternalLink :size="14"
@@ -3546,8 +3577,8 @@ watch(
                         </div>
                         <div class="youtube-frame">
                             <iframe
-                                :src="youtubeEmbedUrl"
-                                :title="`Video YouTube ${currentRelease.title}`"
+                                :src="video.embedUrl"
+                                :title="`Video ${video.index + 1} ${currentRelease.title}`"
                                 frameborder="0"
                                 allow="
                                     accelerometer;
@@ -3587,23 +3618,59 @@ watch(
         </main>
         <main
             v-else-if="route.name === 'news' && currentNews"
-            class="detail news-detail wrap"
+            class="news-detail-page wrap"
         >
-            <img
-                class="detail-cover"
-                :src="currentNews.image"
-                :alt="currentNews.title"
-            />
-            <div>
-                <span class="eyebrow"
-                    >{{ currentNews.category }} · {{ currentNews.date }}</span
-                >
-                <h1>{{ currentNews.title }}</h1>
+            <article class="news-detail-article">
+                <RouterLink class="news-back-link" to="/berita"><ArrowRight :size="15" /> Semua berita</RouterLink>
+                <header class="news-article-header">
+                    <span class="news-article-category">{{ currentNews.category }}</span>
+                    <h1>{{ currentNews.title }}</h1>
+                    <p class="news-article-excerpt">{{ currentNews.excerpt }}</p>
+                    <div class="news-article-byline">
+                        <span class="news-author-mark">13</span>
+                        <span><b>Redaksi 13 Nadi</b><small>{{ currentNews.date || "Berita terbaru" }}</small></span>
+                    </div>
+                </header>
+                <figure v-if="currentNews.image" class="news-article-featured-image">
+                    <img :src="currentNews.image" :alt="currentNews.title" />
+                    <figcaption>{{ currentNews.title }} · 13 Nadi Musik</figcaption>
+                </figure>
                 <article class="news-article-body" v-html="articleBody(currentNews)"></article>
-                <RouterLink class="button" to="/#berita"
-                    ><ArrowRight :size="17" />Kembali ke Berita</RouterLink
-                >
-            </div>
+                <footer class="news-article-footer">
+                    <span>Bagikan cerita ini</span>
+                    <RouterLink to="/berita">Jelajahi berita lainnya <ArrowRight :size="15" /></RouterLink>
+                </footer>
+            </article>
+
+            <aside class="news-detail-sidebar" aria-label="Konten terbaru 13 Nadi">
+                <section class="news-sidebar-section">
+                    <div class="news-sidebar-heading"><span>DISCOVER</span><h2>Rilisan terbaru</h2></div>
+                    <RouterLink v-for="release in releases.slice(0, 3)" :key="release.slug" class="news-sidebar-release" :to="`/rilisan/${release.slug}`">
+                        <img :src="release.image" :alt="`Sampul ${release.title}`" />
+                        <span><b>{{ release.title }}</b><small>{{ release.artist }}<template v-if="release.genre"> · {{ release.genre }}</template></small></span>
+                        <ArrowRight :size="15" />
+                    </RouterLink>
+                    <RouterLink class="news-sidebar-more" to="/rilis">Lihat semua rilisan <ArrowRight :size="14" /></RouterLink>
+                </section>
+
+                <section class="news-sidebar-section">
+                    <div class="news-sidebar-heading"><span>WATCH</span><h2>Video pilihan</h2></div>
+                    <button v-for="(video, index) in videoGallery.slice(0, 2)" :key="video.title" class="news-sidebar-video" type="button" @click="selectedVideo = index">
+                        <span class="news-sidebar-video-image"><img :src="video.image" :alt="video.title" /><i>▶</i></span>
+                        <span><b>{{ video.title }}</b><small>{{ video.duration || "Video 13 Nadi" }}</small></span>
+                    </button>
+                    <RouterLink class="news-sidebar-more" to="/video">Jelajahi video <ArrowRight :size="14" /></RouterLink>
+                </section>
+
+                <section class="news-sidebar-section">
+                    <div class="news-sidebar-heading"><span>IN PICTURES</span><h2>Galeri terbaru</h2></div>
+                    <button v-for="album in photoAlbums.slice(0, 2)" :key="album.id || album.slug" class="news-sidebar-album" type="button" @click="openPhotoGallery(album)">
+                        <img :src="album.cover" :alt="album.title" />
+                        <span><b>{{ album.title }}</b><small>{{ album.images.length }} foto · Buka album</small></span>
+                    </button>
+                    <RouterLink class="news-sidebar-more" to="/foto">Lihat semua galeri <ArrowRight :size="14" /></RouterLink>
+                </section>
+            </aside>
         </main>
         <main
             v-else-if="['privacy', 'terms'].includes(String(route.name))"
