@@ -47,6 +47,37 @@ const route = useRoute(),
     selectedVideo = ref<number | null>(null),
     selectedPhotoAlbum = ref<PhotoAlbum | null>(null),
     selectedPhotoIndex = ref(0);
+const toDateInputValue = (value: unknown) => {
+    if (typeof value !== "string" || !value.trim()) return "";
+    const trimmed = value.trim();
+    const isoDate = trimmed.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    if (isoDate) return isoDate;
+
+    const months: Record<string, string> = {
+        januari: "01", februari: "02", maret: "03", april: "04",
+        mei: "05", juni: "06", juli: "07", agustus: "08",
+        september: "09", oktober: "10", november: "11", desember: "12",
+    };
+    const localizedDate = trimmed.match(/^(\d{1,2})\s+([\p{L}]+)\s+(\d{4})$/u);
+    if (localizedDate) {
+        const month = months[localizedDate[2].toLocaleLowerCase("id-ID")];
+        if (month) return `${localizedDate[3]}-${month}-${localizedDate[1].padStart(2, "0")}`;
+    }
+
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+};
+const formatNewsDate = (value: unknown) => {
+    const dateValue = toDateInputValue(value);
+    if (!dateValue) return typeof value === "string" ? value : "";
+    const [year, month, day] = dateValue.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
+};
 const username = ref(""),
     password = ref(""),
     authError = ref(""),
@@ -1046,7 +1077,7 @@ const loadPublicContent = async () => {
                 ...groups.news.map((x: any) => ({
                     slug: x.slug,
                     category: x.subtitle || "Berita",
-                    date: x.metadata?.date || "",
+                    date: formatNewsDate(x.metadata?.date || ""),
                     title: x.title,
                     excerpt: stripHtml(x.description || ""),
                     content: x.description || "",
@@ -1493,7 +1524,7 @@ const loadContentForm = async () => {
                 youtube_urls: Array.isArray(x.metadata?.youtube_urls)
                     ? x.metadata.youtube_urls.filter(Boolean)
                     : x.metadata?.youtube_url ? [x.metadata.youtube_url] : [""],
-                date: x.metadata?.date || "",
+                date: toDateInputValue(x.metadata?.date || ""),
                 duration: x.metadata?.duration || "",
                 open_new_tab: x.metadata?.open_new_tab !== false,
             },
@@ -2201,8 +2232,9 @@ watch(
                                 class="field"
                                 ><span>Tanggal</span
                                 ><input
+                                    type="date"
                                     v-model="contentForm.metadata.date"
-                                    placeholder="23 Agustus 2026" /></label
+                                    aria-label="Pilih tanggal berita" /></label
                             ><label
                                 v-if="currentModule === 'video'"
                                 class="field"
